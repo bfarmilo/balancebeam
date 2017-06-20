@@ -1,0 +1,118 @@
+import React from 'react';
+import PropTypes from 'prop-types';
+
+class BalanceTable extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      txnID: '',
+      txnDate: '',
+      Description: '',
+      Amount: '',
+      editRow: -1
+    };
+    this.editEntry = this.editEntry.bind(this);
+    this.handleAmountChange = this.handleAmountChange.bind(this);
+    this.handleDateChange = this.handleDateChange.bind(this);
+    this.handleDescChange = this.handleDescChange.bind(this);
+    this.updateEntry = this.updateEntry.bind(this);
+  }
+
+  handleDateChange(event) {
+    this.setState({ txnDate: event.target.value });
+  }
+
+  handleDescChange(event) {
+    this.setState({ Description: event.target.value });
+  }
+
+  handleAmountChange(event) {
+    this.setState({ Amount: event.target.value });
+  }
+
+  editEntry(event) {
+    // load the current row into the state record to make it editable
+    const ledgerRow = parseInt(event.target.name, 10);
+    this.setState({
+      editRow: ledgerRow,
+      txnID: event.target.id,
+      txnDate: this.props.ledger[ledgerRow].txnDate,
+      Description: this.props.ledger[ledgerRow].Description,
+      Amount: this.props.ledger[ledgerRow].Amount
+    });
+  }
+
+  updateEntry() {
+    this.props.editEntry(
+      this.state.txnID,
+      this.state.txnDate,
+      this.state.Description,
+      this.state.Amount
+    );
+    this.setState({ editRow: -1 });
+  }
+
+  render() {
+    return (
+      <div className="LedgerArea">
+        <table className="Ledger">
+          <thead>
+            <tr>
+              <th />
+              <th />
+              <th className="MinBalance">Minimum Balance:</th>
+              <th className={this.props.minBalance < 0 ? 'Negative MinBalance' : 'MinBalance'}>${this.props.minBalance < 0 ? -1 * this.props.minBalance : this.props.minBalance}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <tr />
+            <tr>
+              <td className="StartBalance">{this.props.currentdate.toISOString().split('T')[0]}</td>
+              <td className="StartBalance">Starting Balance</td>
+              <td />
+              <td className={this.props.balance < 0 ? 'Currency Negative Total' : 'Currency StartBalance Total'}>${this.props.balance < 0 ? (-1 * this.props.balance) : this.props.balance}</td>
+              <td />
+            </tr>
+            {this.props.ledger.map((val, idx) => {
+              let dateCell = <td>{val.txnDate}</td>;
+              let discCell = <td>{val.Description}</td>;
+              let amntCell = <td className="Currency">{val.Amount < 0 ? `- $${(-1 * val.Amount).toFixed(2)}` : `+ $${val.Amount.toFixed(2)}`}</td>;
+              let buttonCell = <td className="EditBox">{this.state.editRow > -1 ? <button disabled>x</button> : <button id={val.txnID} name={idx} type="button" onClick={(e) => this.editEntry(e)}>+</button>}</td>;
+              if (this.state.editRow === idx) {
+                dateCell = <td><input className="EditLedger" type="date" name={`${idx}_${val.txnID}date`} value={this.state.txnDate} onChange={this.handleDateChange} /></td>;
+                discCell = <td><input className="EditLedger" type="text" name={`${idx}_${val.txnID}desc`} value={this.state.Description} onChange={this.handleDescChange} /></td>;
+                amntCell = <td><input className="EditLedger Currency" type="number" name={`${idx}_${val.txnID}amnt`} value={this.state.Amount} onChange={this.handleAmountChange} /></td>;
+                buttonCell = <td className="EditBox"><button id={val.txnID} name={idx} type="button" onClick={() => this.updateEntry()}>OK</button></td>;
+              }
+              return (
+                <tr key={val.txnID} id={`row-${val.txnID}`}>
+                  {dateCell}
+                  {discCell}
+                  {amntCell}
+                  <td className={`Currency Total ${this.state.editRow === idx ? 'EditLedger' : ''} ${val.Balance < 0 ? 'Negative' : ''}`}>${val.Balance < 0 ? (-1 * val.Balance).toFixed(2) : val.Balance.toFixed(2)}</td>
+                  {buttonCell}
+                </tr>);
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+}
+
+BalanceTable.propTypes = {
+  currentdate: PropTypes.number.isRequired,
+  balance: PropTypes.number.isRequired,
+  ledger: PropTypes.arrayOf(PropTypes.shape({
+    txnID: PropTypes.string,
+    txnDate: PropTypes.string,
+    Amount: PropTypes.number,
+    Account: PropTypes.number,
+    Description: PropTypes.string
+  })).isRequired,
+  minBalance: PropTypes.number.isRequired,
+  editEntry: PropTypes.func.isRequired
+};
+
+export default BalanceTable;

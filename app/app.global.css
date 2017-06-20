@@ -1,13 +1,94 @@
 @import "~font-awesome/css/font-awesome.css";
 
+.LedgerArea {
+    display:flex;
+}
+
+.Ledger {
+    font-size: 18px;
+    font-family: Arial, Helvetica, sans-serif;
+    width: 75%;
+    margin:auto
+}
+
+.Budget {
+    font-size: 18px;
+    font-family: Arial, Helvetica, sans-serif;
+    width: 95%;
+    margin:auto
+}
+
+.Account {
+    text-align:center;
+}
+
+.Currency {
+    text-align: right
+}
+
+.Negative {
+    color: red
+}
+
+.Total {
+    font-weight: bold
+}
+
+.MinBalance {
+    text-align:right;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.StartBalance {
+    color:darkblue;
+    font-weight:bold;
+}
+
+.EditLedger {
+    font-style:italic;
+    background:lightgray;
+}
+.input-tiny {
+    width:25px;
+}
+
+.input-small {
+    width:65px;
+}
+
+.input-medium {
+    width: 100px;
+}
+.input-large {
+    width:180px;
+}
+
+h1 {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+input {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 18px;
+    border:none;
+}
+
+th {
+    border:0px;
+    border-bottom:1px solid grey;
+    margin:-1px;
+    padding:0px;
+}
+
 body {
   position: relative;
-  color: white;
+  color: black;
   height: 100vh;
-  background-color: #232c39;
-  background-image: linear-gradient(45deg, rgba(0, 216, 255, 0.5) 10%, rgba(0, 1, 127, 0.7));
+  background-color: white;
+  /* background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.5) 10%, rgba(255, 255, 255, 0.7)); */
   font-family: Arial, Helvetica, Helvetica Neue, serif;
-  overflow-y: hidden;
+  /* overflow-y: hidden */;
 }
 
 h2 {
