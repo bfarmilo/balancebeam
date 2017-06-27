@@ -1,12 +1,12 @@
 import React from 'react';
-import { recalculateBalance, accountBudget, updateMaster } from '../actions/expandledger';
-import { accountList } from '../dist/accountList.json';
-import { budgetList } from '../dist/budgetList.json';
+import { recalculateBalance } from '../actions/expandledger';
+import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../containers/BalanceTable';
 import ControlArea from '../containers/ControlArea';
 import BudgetEditor from '../containers/BudgetEditor';
-// import getAllUpdates from '../actions/getbalances';
+
+const ipcRenderer = require('electron').ipcRenderer;
 
 // const exchangeRate = 'http://api.fixer.io/latest?symbols=CAD&base=USD';
 
@@ -16,12 +16,17 @@ class Main extends React.Component {
     this.state = {
       account: {},
       accountIdx: 1,
+      config: {},
       displayCurrency: 'CAD',
       data: [],
       budget: [],
       chartMode: true,
-      budgetTable: budgetList,
-      accountTable: accountList
+      loadingMessage: 'Loading ...',
+      budgetTable: [],
+      accountTable: [],
+      customLedgerTable: [],
+      outputFile: '',
+      ledgerFile: ''
     };
     this.changeAccount = this.changeAccount.bind(this);
     this.editRow = this.editRow.bind(this);
@@ -31,24 +36,54 @@ class Main extends React.Component {
   }
 
   componentWillMount() {
-    // need to add ability to deal with pre-existing ledgers
-    // read existing file first, then recalculate only on request ?
-    this.changeAccount(this.state.accountIdx);
+    ipcRenderer.on('dropbox', (event, path) => {
+      console.log(`Home: recieved dropbox IPC call with arg ${path}`);
+      this.setState({
+        outputFile: `${path}\\budgetList.json`,
+        ledgerFile: `${path}\\customLedger.json`
+      });
+    });
+    ipcRenderer.on('config', (e, config) => {
+      console.log('Home: received new config');
+      this.setState({ config });
+    });
+    ipcRenderer.on('accountList', (e, accountTable) => {
+      console.log('Home: received new accountList');
+      this.setState({ accountTable });
+    });
+    ipcRenderer.on('budgetList', (e, budgetTable) => {
+      console.log('Home: received new budgetList');
+      this.setState({ budgetTable });
+    });
+    ipcRenderer.on('customLedger', (e, customLedgerTable) => {
+      console.log('Home: received new customLedgerTable');
+      this.setState({ customLedgerTable });
+    });
+    ipcRenderer.on('message', (e, loadingMessage) => {
+      console.log(`Home: got new message ${loadingMessage}`);
+      this.setState({ loadingMessage });
+    });
+    ipcRenderer.on('ready', () => {
+      console.log('Home: got ready message');
+      this.changeAccount(this.state.accountIdx);
+      this.setState({ loadingMessage: 'ready' });
+    });
   }
 
   changeAccount(newAccount, refresh = false) {
-    console.log('Main: received request to refresh account');
+    const account = this.state.accountTable.find((acct) => acct.acctID === `${newAccount}`);
+    console.log('Main-changeAccount: received request to refresh account', newAccount, account);
     recalculateBalance(
       this.state.accountTable,
       this.state.budgetTable,
-      this.state.accountTable[newAccount],
+      this.state.customLedgerTable,
+      account,
       this.state.displayCurrency,
       (refresh ? this.state.data : []),
       (err, data) => {
-        console.log(`Main.changeAccount: ${data}`);
         this.setState({
           data,
-          account: this.state.accountTable[newAccount],
+          account,
           accountIdx: parseInt(newAccount, 10)
         });
       });
@@ -56,34 +91,28 @@ class Main extends React.Component {
 
   editRow(txnID, txnDate, Description, Amount) {
     const newRecord = { txnID, txnDate, Description, Amount };
-    const currentLedger = this.state.data;
-    this.setState({
-      data: currentLedger.splice(
-        currentLedger.findIndex(x => x.txnID === newRecord.txnID),
-        1,
-        newRecord
-      )
+    console.log('Main-editRow: custom ledger ', this.state.customLedgerTable);
+    modifyLedger(this.state.customLedgerTable, newRecord, this.state.ledgerFile, this.state.accountIdx, (err, data) => {
+      if (err) console.log(err);
+      console.log(data);
+      this.setState({ customLedgerTable: data }, this.changeAccount(this.state.accountIdx));
     });
-    this.changeAccount(this.state.accountIdx, true);
-    // need to write current ledger to file if it is to be restored
   }
 
   updateBalance() {
-    /* getAllUpdates(this.state.accountTable, (err, accountTable) => {
-      if (err) console.log(err);
-      console.log(`Test: got update data ${accountTable}`);
-      this.setState({ accountTable });
-      this.changeAccount(this.state.accountIdx, true);
-    }); */
+    ipcRenderer.send('update');
   }
 
-  editBudget() {
-    if (!this.state.chartMode) {
-      this.setState({ chartMode: true });
-      this.changeAccount(this.state.accountIdx);
+  editBudget(accountIdx, viewBudget) {
+    if (viewBudget) {
+      console.log('Main-editBudget: saving budget');
+      updateMaster(this.state.budgetTable, this.state.budget, this.state.outputFile, (err, budgetTable) => {
+        if (err) console.error('Main: error updating master budget table');
+        this.setState({ budgetTable, chartMode: true }, this.changeAccount(accountIdx));
+      });
     } else {
-      console.log('Main: request to edit budget for account', this.state.accountIdx, typeof (this.state.accountIdx));
-      accountBudget(this.state.budgetTable, this.state.accountIdx, (e, budget) => {
+      console.log('Main: request to edit budget for account', accountIdx, typeof (accountIdx));
+      accountBudget(this.state.budgetTable, accountIdx, (e, budget) => {
         if (e) console.log('Main: Error extracting budget', e);
         this.setState({ budget, chartMode: false });
       });
@@ -91,60 +120,72 @@ class Main extends React.Component {
   }
 
   updateBudget(budgetRecord) {
-    // make a copy of the array
-    const currentBudget = this.state.budget;
-    const newRecord = Object.assign({}, budgetRecord);
-    let index = this.state.budget.length;
-    const deleteOld = (budgetRecord.editRow !== -1);
-    if (deleteOld) {
-      // splice it into the middle, deleting old record
-      console.log(`Main: edit budget row ${budgetRecord.budID}`);
-      index = currentBudget.findIndex(x => x.budID === budgetRecord.budID);
-    }
+    const newRecord = budgetRecord;
+    newRecord.amount = parseFloat(budgetRecord.amount);
     delete newRecord.editRow;
-    currentBudget.splice(index, (deleteOld ? 1 : 0), newRecord);
-    updateMaster(this.state.budgetTable, currentBudget, (err, budgetTable) => {
-      if (err) console.error('Main: error updating master budget table');
-      this.setState({ budgetTable, budget: currentBudget });
-    });
+    const currentBudget = this.state.budget.reduce((result, value) => {
+      if (value.budID === newRecord.budID) {
+        result.push(newRecord);
+      } else {
+        result.push(value);
+      }
+      return result;
+    }, []);
+    console.log('Main-updateBudget: updating this account budget to ', currentBudget);
+    this.setState({ budget: currentBudget });
   }
 
   render() {
     let visibleBlocks;
+    let controlArea;
     const minBalance = Math.min(...this.state.data.map((v) => v.Balance));
-    if (this.state.chartMode) {
+    if (this.state.loadingMessage !== 'ready') {
+      controlArea = (
+        <div />
+      );
       visibleBlocks = (
         <div>
-          <ChartArea data={this.state.data} />
-          <BalanceTable
-            currentdate={new Date()}
-            balance={this.state.account.balance}
-            ledger={this.state.data}
-            minBalance={minBalance}
-            editEntry={this.editRow}
-          />
+          {this.state.loadingMessage}
         </div>
       );
     } else {
-      visibleBlocks = (
-        <div>
-          <BudgetEditor
-            accountTable={accountList}
-            budgetItems={this.state.budget}
-            updateBudget={this.updateBudget}
-          />
-        </div>
-      );
-    }
-    return (
-      <div>
+      controlArea = (
         <ControlArea
-          accountTable={accountList}
+          accountTable={this.state.accountTable}
           account={this.state.account}
           selectAccount={this.changeAccount}
           updateBalance={this.updateBalance}
           editBudget={this.editBudget}
-        />
+          viewBudget={!this.state.chartMode}
+        />);
+      if (this.state.chartMode) {
+        visibleBlocks = (
+          <div>
+            <ChartArea data={this.state.data} />
+            <BalanceTable
+              currentdate={new Date()}
+              balance={this.state.account.balance}
+              ledger={this.state.data}
+              minBalance={minBalance}
+              editEntry={this.editRow}
+            />
+          </div>
+        );
+      } else {
+        visibleBlocks = (
+          <div>
+            <BudgetEditor
+              accountTable={this.state.accountTable}
+              budgetItems={this.state.budget}
+              updateBudget={this.updateBudget}
+            />
+          </div>
+        );
+      }
+    }
+    return (
+      <div>
+        {controlArea}
         {visibleBlocks}
       </div>
     );

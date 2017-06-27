@@ -19,7 +19,6 @@ class ChartArea extends React.Component {
         ) / 500
       ) * 500
     );
-    console.log(tickVals);
     return (
       <div>
         <VictoryChart
@@ -66,7 +65,7 @@ ChartArea.propTypes = {
     txnID: PropTypes.string,
     txnDate: PropTypes.string,
     Amount: PropTypes.number,
-    Account: PropTypes.number,
+    Account: PropTypes.string,
     Description: PropTypes.string,
     Balance: PropTypes.number
   })).isRequired,

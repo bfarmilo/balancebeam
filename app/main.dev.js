@@ -10,10 +10,48 @@
  *
  * @flow
  */
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
+import fse from 'fs-extra';
 import MenuBuilder from './menu';
 
+const exec = require('child_process').exec;
+
+let checkAccount = true;
+
+let dropBoxPath = '';
+
 let mainWindow = null;
+
+const updateAccounts = () => {
+  new Promise((resolve, reject) => {
+    exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
+      if (err) return reject(stderr);
+      return resolve('accountList');
+    });
+  })
+    .then(account => getData(account))
+    .then(results => {
+      mainWindow.webContents.send(results.dataType, results.value);
+      return 'done';
+    })
+    .catch(err => console.error(err));
+};
+
+const getData = (dataType) => new Promise((resolve, reject) => {
+  // mainWindow.webContents.send('message', `Loading ${dataType} data`);
+  fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
+    .then(resultData => {
+      console.log(`Main: Good ${dataType} data with ${resultData[dataType].length} items`);
+      return resolve({ dataType, value: resultData[dataType] });
+    })
+    .catch(err1 => {
+      console.error(`Error getting ${dataType} data: ${err1}`);
+      return reject(err1);
+    });
+});
+
+const getAllData = () => Promise.all(['config', 'budgetList', 'customLedger', 'accountList'].map(getData));
+
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -39,7 +77,6 @@ const installExtensions = async () => {
     .all(extensions.map(name => installer.default(installer[name], forceDownload)))
     .catch(console.log);
 };
-
 
 /**
  * Add event listeners...
@@ -67,6 +104,8 @@ app.on('ready', async () => {
 
   mainWindow.loadURL(`file://${__dirname}/app.html`);
 
+  // now do all of the loading, firing events as you go
+
   // @TODO: Use 'ready-to-show' event
   //        https://github.com/electron/electron/blob/master/docs/api/browser-window.md#using-ready-to-show-event
   mainWindow.webContents.on('did-finish-load', () => {
@@ -75,6 +114,26 @@ app.on('ready', async () => {
     }
     mainWindow.show();
     mainWindow.focus();
+    mainWindow.webContents.send('dropbox', dropBoxPath, '');
+    getAllData()
+      .then((result) => result.map(item => {
+        mainWindow.webContents.send('message', `Loading ${item.dataType}`);
+        mainWindow.webContents.send(item.dataType, item.value);
+        return item;
+      }).filter(val => (val.dataType === 'accountList'))
+      )
+      .then((result) => {
+        mainWindow.webContents.send('ready');
+        const todayDate = new Date();
+        if (checkAccount &&
+          (result.reduce(val => val).value.findIndex(val => val.balanceDate === todayDate.toISOString().split('T')[0]) === -1)) {
+          checkAccount = false;
+          updateAccounts();
+        }
+        console.log('all promises resolved');
+        return 'done';
+      })
+      .catch(err => console.error(err));
   });
 
   mainWindow.on('closed', () => {
@@ -84,3 +143,20 @@ app.on('ready', async () => {
   const menuBuilder = new MenuBuilder(mainWindow);
   menuBuilder.buildMenu();
 });
+
+// on startup
+
+fse.readJSON(`${process.env.LOCALAPPDATA}//Dropbox//info.json`)
+  .then(dropbox => {
+    dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
+    return console.log(`Main: Good DropBox Path:${dropBoxPath}`);
+  })
+  .catch(error => console.error(`Error getting Dropbox path: ${error}`));
+
+// event listeners
+
+ipcMain.on('update', e => {
+  console.log('Main: received update request');
+  updateAccounts();
+});
+

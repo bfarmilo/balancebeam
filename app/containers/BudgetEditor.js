@@ -1,6 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+// TODO:
+// 1. Get rid of plus button and make any field clickable to edit
+// 2. Replace Account to/from Numbers with Descriptions
+
 class BudgetEditor extends React.Component {
   constructor(props) {
     const currentDate = new Date();
@@ -192,7 +196,7 @@ class BudgetEditor extends React.Component {
 
 BudgetEditor.propTypes = {
   accountTable: PropTypes.arrayOf(PropTypes.shape({
-    acctID: PropTypes.number.isRequired,
+    acctID: PropTypes.string.isRequired,
     accountName: PropTypes.string.isRequired,
     currency: PropTypes.string.isRequired,
     balance: PropTypes.number.isRequired,

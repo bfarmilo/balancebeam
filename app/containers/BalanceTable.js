@@ -33,12 +33,13 @@ class BalanceTable extends React.Component {
   editEntry(event) {
     // load the current row into the state record to make it editable
     const ledgerRow = parseInt(event.target.name, 10);
+    const ledgerEntry = this.props.ledger.find(entry => entry.txnID === event.target.id);
     this.setState({
       editRow: ledgerRow,
-      txnID: event.target.id,
-      txnDate: this.props.ledger[ledgerRow].txnDate,
-      Description: this.props.ledger[ledgerRow].Description,
-      Amount: this.props.ledger[ledgerRow].Amount
+      txnID: ledgerEntry.txnID,
+      txnDate: ledgerEntry.txnDate,
+      Description: ledgerEntry.Description,
+      Amount: ledgerEntry.Amount
     });
   }
 
@@ -102,7 +103,7 @@ class BalanceTable extends React.Component {
 }
 
 BalanceTable.propTypes = {
-  currentdate: PropTypes.number.isRequired,
+  currentdate: PropTypes.instanceOf(Date).isRequired,
   balance: PropTypes.number.isRequired,
   ledger: PropTypes.arrayOf(PropTypes.shape({
     txnID: PropTypes.string,
