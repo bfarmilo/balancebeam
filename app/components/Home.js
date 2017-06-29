@@ -2,7 +2,7 @@ import React from 'react';
 import { recalculateBalance } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
 import ChartArea from '../components/ChartArea';
-import BalanceTable from '../containers/BalanceTable';
+import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../containers/ControlArea';
 import BudgetEditor from '../containers/BudgetEditor';
 
@@ -25,7 +25,8 @@ class Main extends React.Component {
       budgetTable: [],
       accountTable: [],
       customLedgerTable: [],
-      outputFile: ''
+      outputFile: '',
+      editTxn: { txnID: '', txnDate: '', Amount: 0, Account: 0, Custom: false, Description: '' }
     };
     this.changeAccount = this.changeAccount.bind(this);
     this.editRow = this.editRow.bind(this);
@@ -33,6 +34,7 @@ class Main extends React.Component {
     this.updateBudget = this.updateBudget.bind(this);
     this.updateBalance = this.updateBalance.bind(this);
     this.updateLedger = this.updateLedger.bind(this);
+    this.handleLedgerChange = this.handleLedgerChange.bind(this);
   }
 
   componentWillMount() {
@@ -88,45 +90,81 @@ class Main extends React.Component {
       });
   }
 
-  editRow(txnID, txnDate, Description, Amount, action) {
-    const newRecord = { txnID, txnDate, Description, Amount };
-    console.log('Home-editRow: custom ledger ', this.state.customLedgerTable);
-    const budgetEntry = this.state.budgetTable
-      .filter(val => txnID.split('-')[0] === val.budID)
-      .reduce(val => val);
-    console.log('Home-editRow: budgetEntry', budgetEntry);
-    modifyLedger(
-      action,
-      this.state.customLedgerTable,
-      newRecord,
-      this.state.accountIdx,
-      budgetEntry,
-      (err, customLedgerTable) => {
-        if (err) {
-          console.log(err);
-        } else {
-          ipcRenderer.send('writeOutput', 'customLedger', customLedgerTable);
-          console.log('Home-editRow: received new ledger data', customLedgerTable);
-          recalculateBalance(
-            this.state.accountTable,
-            this.state.budgetTable,
-            this.state.customLedgerTable,
-            this.state.account,
-            this.state.displayCurrency,
-            [],
-            (error, data) => {
-              if (error) {
-                console.error('Error recalculating Balance', error);
-              } else {
-                this.setState({
-                  data,
-                  customLedgerTable
-                });
-              }
-            });
+  handleLedgerChange(event) {
+    // This updates the active edited ledger
+    // need a state for the currently edited ledger
+    const dataType = event.target.name.split('_')[1];
+    console.log('testing', { [dataType]: event.target.value });
+    console.log('Handling data change with type', dataType, event.target.value);
+    const newRecord = Object.assign({}, this.state.editTxn);
+    newRecord[dataType] = event.target.value;
+    this.setState({ editTxn: newRecord });
+
+    /* const updatedLedger = this.state.data.reduce((result, v) => {
+       if (v.txnID === this.state.editTxn.txnID) {
+         const newRecord = {
+           txnID: v.txnID,
+           txnDate: v.txnDate,
+           Amount: v.Amount,
+           Description: v.Description,
+           Account: v.Account,
+         };
+         newRecord[dataType] = event.target.value;
+         result.push(newRecord);
+       } else {
+         result.push(v);
+       }
+       return result;
+     }, []);
+    this.setState({ data: updatedLedger });
+    */
+  }
+
+  editRow(event) {
+    const [txnID, action] = event.currentTarget.name.split('_');
+    if (action === 'enable') {
+      const { txnDate, Description, Amount } = this.state.data.find(entry => entry.txnID === txnID);
+      this.setState({ editTxn: { txnID, txnDate, Description, Amount } });
+    } else {
+      console.log('Home-editRow: custom ledger ', this.state.customLedgerTable);
+      const budgetEntry = this.state.budgetTable
+        .filter(val => txnID.split('-')[0] === val.budID)
+        .reduce(val => val);
+      console.log('Home-editRow: budgetEntry', budgetEntry);
+      modifyLedger(
+        action,
+        this.state.customLedgerTable,
+        this.state.editTxn,
+        this.state.accountIdx,
+        budgetEntry,
+        (err, customLedgerTable) => {
+          if (err) {
+            console.log(err);
+          } else {
+            ipcRenderer.send('writeOutput', 'customLedger', customLedgerTable);
+            console.log('Home-editRow: received new ledger data', customLedgerTable);
+            recalculateBalance(
+              this.state.accountTable,
+              this.state.budgetTable,
+              this.state.customLedgerTable,
+              this.state.account,
+              this.state.displayCurrency,
+              [],
+              (error, data) => {
+                if (error) {
+                  console.error('Error recalculating Balance', error);
+                } else {
+                  this.setState({
+                    data,
+                    customLedgerTable,
+                    editTxn: { txnID: '', txnDate: '', Amount: 0, Account: 0, Custom: false, Description: '' }
+                  });
+                }
+              });
+          }
         }
-      }
-    );
+      );
+    }
   }
 
   editBudget(accountIdx, viewBudget) {
@@ -249,11 +287,13 @@ class Main extends React.Component {
           <div>
             <ChartArea data={this.state.data} />
             <BalanceTable
-              currentdate={new Date()}
               balance={this.state.account.balance}
-              ledger={this.state.data}
               minBalance={minBalance}
+              currentDate={new Date()}
+              ledger={this.state.data}
+              editTxn={this.state.editTxn}
               editEntry={this.editRow}
+              handleDataChange={this.handleLedgerChange}
             />
           </div>
         );
