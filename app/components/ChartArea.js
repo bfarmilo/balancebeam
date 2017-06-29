@@ -65,7 +65,7 @@ ChartArea.propTypes = {
     txnID: PropTypes.string,
     txnDate: PropTypes.string,
     Amount: PropTypes.number,
-    Account: PropTypes.string,
+    Account: PropTypes.number,
     Description: PropTypes.string,
     Balance: PropTypes.number
   })).isRequired,

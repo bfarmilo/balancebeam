@@ -7,14 +7,16 @@ class ControlArea extends React.Component {
     this.selectAccount = this.selectAccount.bind(this);
     this.refreshBalance = this.refreshBalance.bind(this);
     this.editBudget = this.editBudget.bind(this);
+    this.updateLedger = this.updateLedger.bind(this);
   }
 
-  componentWillReceiveProps(nextProps) {
-    this.setState({ accountBalance: nextProps.account.balance });
-  }
   // account select drop-down
   selectAccount(event) {
     this.props.selectAccount(event.target.value);
+  }
+
+  updateLedger() {
+    this.props.updateLedger();
   }
 
   refreshBalance() {
@@ -29,14 +31,18 @@ class ControlArea extends React.Component {
     return (
       <div className="LedgerArea">
         <select name="ChooseAcct" id="accountselect" disabled={this.props.viewBudget} onChange={(e) => this.selectAccount(e)}>
-          {this.props.accountTable.reduce((result, val, idx) => {
+          {this.props.accountTable.reduce((result, val) => {
             if (val.includeAccount) {
               result.push(
-                <option key={val.acctID} value={idx}>{val.accountName}: $ {val.balance}</option>
+                <option key={val.acctID} value={val.acctID}>
+                  {val.accountName}: $ {val.balance}
+                </option>
               );
             } else if (val.balance !== 0) {
               result.push(
-                <option key={val.acctID} disabled value={idx}>{val.accountName}: $ {val.balance}</option>
+                <option key={val.acctID} disabled value={parseInt(val.acctID, 10)}>
+                  {val.accountName}: $ {val.balance}
+                </option>
               );
             }
             return result;
@@ -46,6 +52,7 @@ class ControlArea extends React.Component {
         <input type="number" disabled className="Currency" value={this.props.account.balance} />
         <button type="button" onClick={() => this.refreshBalance()}>Update</button>
         <button type="button" onClick={() => this.editBudget()}>{this.props.viewBudget ? 'Save' : 'Edit Budget'}</button>
+        <button type="button" onClick={() => this.updateLedger()}>Refresh Ledger</button>
       </div>
     );
   }
@@ -85,7 +92,8 @@ ControlArea.propTypes = {
   selectAccount: PropTypes.func.isRequired,
   updateBalance: PropTypes.func.isRequired,
   editBudget: PropTypes.func.isRequired,
-  viewBudget: PropTypes.bool.isRequired
+  viewBudget: PropTypes.bool.isRequired,
+  updateLedger: PropTypes.func.isRequired
 };
 
 export default ControlArea;

@@ -1,10 +1,19 @@
+// @flow
+
 const periodCounts = {
-  "Year": 1,
-  "Month": 12,
-  "Week": 52
+  Year: 1,
+  Month: 12,
+  Week: 52
 };
 const exchangeRates = {
-  "USD": 1.3
+  USD: 1.3
+};
+
+type ledgerItem = {
+  txnID: string,
+  txnDate: string,
+  Description: string,
+  Amount: number
 };
 
 const USDCAD = exchangeRates.USD;
@@ -31,7 +40,7 @@ budgetList has the following fields
 returns a ledger (array)
     txnID: a globally unique identifier for each transaction (string)
     txnDate: transaction date (string)
-    Account: which account this side of the transaction is attached to (string)
+    fromAccount: which account this side of the transaction is attached to (string)
     Description: description of transaction (string)
     Amount: value of the transaction, outflows are negative(number)
     Balance: calculated running balance
@@ -48,7 +57,14 @@ expandItem takes a budget record and expands it out based on the frequency of re
 @param debitCredit:String - 'DEBIT' or 'CREDIT'
 
 */
-function expandItem(accountList, customTxnList, budgetRecord, startDate, endDate, debitCredit) {
+function expandItem(
+  accountList,
+  customTxnList,
+  budgetRecord,
+  startDate,
+  endDate,
+  debitCredit
+): Array<ledgerItem> {
   // creates a transaction ID txnID of the form 'budID-i'
   // where i is the expanded count (0 is the one matching the start date)
   const returnArray = [];
@@ -60,7 +76,7 @@ function expandItem(accountList, customTxnList, budgetRecord, startDate, endDate
   let currentEntry = { txnID, txnDate, Amount, Account, Description };
   const transactionDate = new Date(budgetRecord.transactionDate);
 
-  const isDebit = (debitCredit === DEBIT);
+  let isDebit = (debitCredit === DEBIT);
 
   const accountIdx = isDebit ? budgetRecord.fromAccount : budgetRecord.toAccount;
 
@@ -72,7 +88,7 @@ function expandItem(accountList, customTxnList, budgetRecord, startDate, endDate
   if (currentAccount.includeAccount) {
     // ^ future, if 'combined' mode is enabled
     Amount = (isDebit ? -1 * budgetRecord.amount : budgetRecord.amount);
-    Account = currentAccount.acctID;
+    Account = parseInt(currentAccount.acctID, 10);
     Description = budgetRecord.description;
     const MAX_ITEMS = budgetRecord.totalCount !== 0 ? budgetRecord.totalCount : NUM_MONTHS * 3;
     for (let i = 0;
@@ -96,25 +112,23 @@ function expandItem(accountList, customTxnList, budgetRecord, startDate, endDate
       if (transactionDate >= startDate && transactionDate <= endDate) {
         txnID = `${budgetRecord.budID}-${i}`;
         txnDate = transactionDate.toISOString().split('T')[0];
-        currentEntry = { txnID, txnDate, Amount, Account, Description };
+        currentEntry = { txnID, txnDate, Amount, Account, Description, Custom: false };
         returnArray.push(currentEntry);
       }
     }
-  }// now look for matching custom transactions and replace
+  }// now look for matching custom transactions and replace inthe ledger table
   return returnArray.reduce((result, item) => {
     const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
     if (updated.length > 0) {
-      // there's a match
-      const newItem = updated.reduce(val => val);
-      if (newItem.Account === Account) {
-        // entry was changed from this account, so debit already negative
-        newItem.Amount *= (isDebit ? 1 : -1);
-      } else {
-        // entry was changed from the other side of the txn, so debit should be negative
-        newItem.Amount *= (isDebit ? -1 : 1);
-        // add it to this list
-        newItem.Account = Account;
-      }
+      isDebit = (updated[0].fromAccount === Account);
+      const newItem = {
+        txnID: updated[0].txnID,
+        txnDate: updated[0].txnDate,
+        Amount: updated[0].Amount * (isDebit ? -1 : 1),
+        Account,
+        Description: updated[0].Description,
+        Custom: true
+      };
       result.push(newItem);
     } else {
       result.push(item);
@@ -175,14 +189,15 @@ function sortLedger(ledger) {
 recalculateBalance wraps the balance recalculation, and can be called on
 an existing ledger (refreshData <> []) or can create a ledger with balances.
 
-@param accountList:Array of account objects
-@param budgetList:Array of budget objects
+@param accountList: Array of account objects
+@param budgetList: Array of budget objects
 @param customTxnList: Array - the array of user-modified transactions
-@param account:Object (?) the account object to change
-@param showCurrency:String the output currency 'CAD' or 'USD'
-@param refreshData:Array for a refresh, old ledger Otherwise an empty array for a new recalculation
+@param account: Object (?) the account object to change
+@param showCurrency: String the output currency 'CAD' or 'USD'
+@param refreshData: Array for a refresh, old ledger Otherwise an empty array for a new recalculation
 @param callback
 */
+
 function recalculateBalance(
   accountList,
   budgetList,

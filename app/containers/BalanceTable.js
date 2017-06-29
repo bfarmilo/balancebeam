@@ -9,13 +9,18 @@ class BalanceTable extends React.Component {
       txnDate: '',
       Description: '',
       Amount: '',
-      editRow: -1
+      editRow: -1,
+      ledger: this.props.ledger
     };
     this.editEntry = this.editEntry.bind(this);
     this.handleAmountChange = this.handleAmountChange.bind(this);
     this.handleDateChange = this.handleDateChange.bind(this);
     this.handleDescChange = this.handleDescChange.bind(this);
     this.updateEntry = this.updateEntry.bind(this);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    this.setState({ ledger: nextProps.ledger });
   }
 
   handleDateChange(event) {
@@ -43,14 +48,15 @@ class BalanceTable extends React.Component {
     });
   }
 
-  updateEntry() {
+  updateEntry(event) {
+    this.setState({ editRow: -1 });
     this.props.editEntry(
       this.state.txnID,
       this.state.txnDate,
       this.state.Description,
-      this.state.Amount
+      this.state.Amount,
+      event.target.id
     );
-    this.setState({ editRow: -1 });
   }
 
   render() {
@@ -75,24 +81,28 @@ class BalanceTable extends React.Component {
               <td className={this.props.balance < 0 ? 'Currency Negative Total' : 'Currency StartBalance Total'}>${this.props.balance < 0 ? (-1 * this.props.balance) : this.props.balance}</td>
               <td />
             </tr>
-            {this.props.ledger.map((val, idx) => {
+            {this.state.ledger.map((val, idx) => {
               let dateCell = <td>{val.txnDate}</td>;
               let discCell = <td>{val.Description}</td>;
               let amntCell = <td className="Currency">{val.Amount < 0 ? `- $${(-1 * val.Amount).toFixed(2)}` : `+ $${val.Amount.toFixed(2)}`}</td>;
-              let buttonCell = <td className="EditBox">{this.state.editRow > -1 ? <button disabled>x</button> : <button id={val.txnID} name={idx} type="button" onClick={(e) => this.editEntry(e)}>+</button>}</td>;
+              let buttonCell = this.state.editRow > -1 ? <button disabled>x</button> : <button id={val.txnID} name={idx} type="button" onClick={(e) => this.editEntry(e)}>+</button>;
+              let resetButton = '';
               if (this.state.editRow === idx) {
                 dateCell = <td><input className="EditLedger" type="date" name={`${idx}_${val.txnID}date`} value={this.state.txnDate} onChange={this.handleDateChange} /></td>;
                 discCell = <td><input className="EditLedger" type="text" name={`${idx}_${val.txnID}desc`} value={this.state.Description} onChange={this.handleDescChange} /></td>;
                 amntCell = <td><input className="EditLedger Currency" type="number" name={`${idx}_${val.txnID}amnt`} value={this.state.Amount} onChange={this.handleAmountChange} /></td>;
-                buttonCell = <td className="EditBox"><button id={val.txnID} name={idx} type="button" onClick={() => this.updateEntry()}>OK</button></td>;
+                buttonCell = <button name={`${val.txnID}save`} id="modify" type="button" onClick={(e) => this.updateEntry(e)}><i id="modify" className="fa fa-check fa-fw" aria-hidden="true" /></button>;
+                resetButton = val.Custom ? <button name={`${val.txnID}reset`} id="modify" type="button" onClick={(e) => this.updateEntry(e)}><i id="clear" className="fa fa-undo fa-fw" aria-hidden="true" /></button> : '';
               }
               return (
-                <tr key={val.txnID} id={`row-${val.txnID}`}>
+                <tr key={val.txnID} id={`row-${val.txnID}`} className={val.Custom ? 'Custom' : ''}>
                   {dateCell}
                   {discCell}
                   {amntCell}
                   <td className={`Currency Total ${this.state.editRow === idx ? 'EditLedger' : ''} ${val.Balance < 0 ? 'Negative' : ''}`}>${val.Balance < 0 ? (-1 * val.Balance).toFixed(2) : val.Balance.toFixed(2)}</td>
-                  {buttonCell}
+                  <td className="EditBox">
+                    {buttonCell}{resetButton}
+                  </td>
                 </tr>);
             })}
           </tbody>

@@ -1,5 +1,3 @@
-const fse = require('fs-extra');
-
 /*
 accountBudget is a helper function that filters the overall budget list
 on a given account Index.
@@ -27,7 +25,7 @@ updateMaster is used when budget items are edited or added
 @param newBudgetList:Array -  the updated budget list
 @param outputFile:String - the location of where to save the budgetlist on disk
 */
-function updateMaster(budgetList, newBudgetList, outputFile, callback) {
+function updateMaster(budgetList, newBudgetList, callback) {
   try {
     const updatedList = budgetList
       .reduce((result, oldItem) => {
@@ -39,9 +37,6 @@ function updateMaster(budgetList, newBudgetList, outputFile, callback) {
         }
         return result;
       }, []);
-    fse.writeFile(outputFile, `{ "budgetList": ${JSON.stringify(updatedList)} }`, err => {
-      if (err) console.error(err);
-    });
     return callback(null, updatedList);
   } catch (error) {
     return callback(error);
@@ -51,34 +46,63 @@ function updateMaster(budgetList, newBudgetList, outputFile, callback) {
 customLedger writes a modified single ledger entry into the customLedger so it will persist
 @param customLedger:Array - an array of custom (user-modified) Ledger Entries
 @param newEntry:Object - the new ledger object to append / modify in the table
-@param outputFile:String - the path to the customLedger.json file
+@param account:number - the account currently being viewed
+@param budgetEntry - the matching parent budget entry for this transaction
 */
-function modifyLedger(customLedger, modifiedEntry, outputFile, account, callback) {
+function modifyLedger(action, customLedger, modifiedEntry, account, budgetEntry, callback) {
   // merge newEntry into the customLedger
   try {
-    let updatedLedger = [];
-    const newEntry = modifiedEntry;
-    newEntry.Account = parseInt(account, 10);
-    console.log(customLedger);
-    if (customLedger.find(item => item.txnID === newEntry.txnID)) {
-      updatedLedger = customLedger.reduce((result, item) => {
-        if (item.txnID === newEntry.txnID) {
-          // maybe this txnID was from a different account before. If so, flip the sign
-          newEntry.Amount *= (item.Account === newEntry.Account ? 1 : -1);
-          console.log('found entry with txnID', item.txnID, item, newEntry);
-          result.push(newEntry);
-        } else {
-          result.push(item);
+    console.log(`'modifyLedger called with action ${action}`);
+    switch (action) {
+      case 'modify':
+        {
+          let updatedLedger = [];
+          let toAccount;
+          let fromAccount;
+          let Amount = parseFloat(modifiedEntry.Amount);
+          if (Amount > 0) {
+            toAccount = account;
+            fromAccount =
+              budgetEntry.fromAccount === account ? budgetEntry.toAccount : budgetEntry.fromAccount;
+          } else {
+            fromAccount = account;
+            toAccount =
+              budgetEntry.toAccount === account ? budgetEntry.fromAccount : budgetEntry.toAccount;
+            Amount = Math.abs(Amount);
+          }
+          const newEntry = {
+            txnID: modifiedEntry.txnID,
+            Amount,
+            fromAccount,
+            toAccount,
+            Description: modifiedEntry.Description,
+            txnDate: modifiedEntry.txnDate
+          };
+          console.log(`modifyLedger: looking for entry ${newEntry}`);
+          if (customLedger.find(item => item.txnID === newEntry.txnID)) {
+            updatedLedger = customLedger.reduce((result, item) => {
+              if (item.txnID === newEntry.txnID) {
+                console.log('modifyLedger: found entry with txnID, updating', item.txnID, item, newEntry);
+                result.push(newEntry);
+              } else if (new Date(item.txnDate) >= new Date()) {
+                result.push(item);
+              }
+              return result;
+            }, []);
+          } else {
+            updatedLedger = [].concat(customLedger, [newEntry]);
+          }
+          return callback(null, updatedLedger);
         }
-        return result;
-      }, []);
-    } else {
-      updatedLedger = [].concat(customLedger, [newEntry]);
+      case 'clear':
+        return callback(
+          null,
+          customLedger.filter(item => item.txnID !== modifiedEntry.txnID)
+        );
+      default:
+        console.log('modifyLedger: unknown action received', action);
+        throw new Error('unknown action received');
     }
-    fse.writeFile(outputFile, `{ "customLedger": ${JSON.stringify(updatedLedger)}}`, err => {
-      if (err) console.error(err);
-    });
-    return callback(null, updatedLedger);
   } catch (error) {
     return callback(error);
   }

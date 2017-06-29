@@ -22,37 +22,6 @@ let dropBoxPath = '';
 
 let mainWindow = null;
 
-const updateAccounts = () => {
-  new Promise((resolve, reject) => {
-    exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
-      if (err) return reject(stderr);
-      return resolve('accountList');
-    });
-  })
-    .then(account => getData(account))
-    .then(results => {
-      mainWindow.webContents.send(results.dataType, results.value);
-      return 'done';
-    })
-    .catch(err => console.error(err));
-};
-
-const getData = (dataType) => new Promise((resolve, reject) => {
-  // mainWindow.webContents.send('message', `Loading ${dataType} data`);
-  fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
-    .then(resultData => {
-      console.log(`Main: Good ${dataType} data with ${resultData[dataType].length} items`);
-      return resolve({ dataType, value: resultData[dataType] });
-    })
-    .catch(err1 => {
-      console.error(`Error getting ${dataType} data: ${err1}`);
-      return reject(err1);
-    });
-});
-
-const getAllData = () => Promise.all(['config', 'budgetList', 'customLedger', 'accountList'].map(getData));
-
-
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
@@ -115,20 +84,19 @@ app.on('ready', async () => {
     mainWindow.show();
     mainWindow.focus();
     mainWindow.webContents.send('dropbox', dropBoxPath, '');
-    getAllData()
+    getAllData(mainWindow.webContents)
       .then((result) => result.map(item => {
-        mainWindow.webContents.send('message', `Loading ${item.dataType}`);
-        mainWindow.webContents.send(item.dataType, item.value);
+        if (mainWindow) mainWindow.webContents.send(item.dataType, item.value);
         return item;
       }).filter(val => (val.dataType === 'accountList'))
       )
       .then((result) => {
-        mainWindow.webContents.send('ready');
+        if (mainWindow) mainWindow.webContents.send('ready');
         const todayDate = new Date();
         if (checkAccount &&
           (result.reduce(val => val).value.findIndex(val => val.balanceDate === todayDate.toISOString().split('T')[0]) === -1)) {
           checkAccount = false;
-          updateAccounts();
+          if (mainWindow) updateAccounts(mainWindow.webContents);
         }
         console.log('all promises resolved');
         return 'done';
@@ -144,19 +112,78 @@ app.on('ready', async () => {
   menuBuilder.buildMenu();
 });
 
+// custom functions
+const updateAccounts = (target) => {
+  new Promise((resolve, reject) => {
+    exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
+      if (err) return reject(stderr);
+      return resolve('accountList');
+    });
+  })
+    .then(account => getData(account))
+    .then(results => {
+      if (target) target.send(results.dataType, results.value);
+      return 'done';
+    })
+    .catch(err => console.error(err));
+};
+
+const getData = (dataType) => new Promise((resolve, reject) => {
+  // mainWindow.webContents.send('message', `Loading ${dataType} data`);
+  console.log(`Main: Loading ${dropBoxPath}\\${dataType}.json`);
+  fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
+    .then(resultData => {
+      console.log(`Main: Good ${dataType} data`);
+      return resolve({ dataType, value: resultData[dataType] });
+    })
+    .catch(err1 => {
+      console.error(`Error getting ${dataType} data: ${err1}`);
+      return reject(err1);
+    });
+});
+
+const getAllData = (target) => {
+  target.webContents.send('message', 'Loading local data files...');
+  return Promise.all(['config', 'budgetList', 'customLedger', 'accountList'].map(getData));
+};
+
 // on startup
 
-fse.readJSON(`${process.env.LOCALAPPDATA}//Dropbox//info.json`)
-  .then(dropbox => {
-    dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
-    return console.log(`Main: Good DropBox Path:${dropBoxPath}`);
-  })
-  .catch(error => console.error(`Error getting Dropbox path: ${error}`));
-
+if (process.env.LOCALAPPDATA) {
+  fse.readJSON(`${process.env.LOCALAPPDATA}//Dropbox//info.json`)
+    .then(dropbox => {
+      dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
+      return console.log(`Main: Good DropBox Path:${dropBoxPath}`);
+    })
+    .catch(error => console.error(`Error getting Dropbox path: ${error}`));
+}
 // event listeners
 
 ipcMain.on('update', e => {
   console.log('Main: received update request');
-  updateAccounts();
+  if (mainWindow) {
+    updateAccounts(mainWindow.webContents)
+      .then(() => mainWindow.webContents.send('ready'))
+      .catch(err => console.error('Error with udpate', err));
+  }
 });
 
+ipcMain.on('writeOutput', (e, dataType, value) => {
+  console.log(`Main: received call to update ${dataType}`);
+  fse.writeFile(`${dropBoxPath}\\${dataType}.json`, `{ "${dataType}": ${JSON.stringify(value)}}`, err => {
+    if (err) console.error(err);
+  });
+});
+
+ipcMain.on('updateLedger', e => {
+  console.log('Main: received call to update ledger');
+  getData('customLedger')
+    .then(results => {
+      if (mainWindow) {
+        mainWindow.webContents.send(results.dataType, results.value);
+        mainWindow.webContents.send('ready');
+      }
+      return 'done';
+    })
+    .catch(error => console.error(error));
+});

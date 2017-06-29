@@ -25,38 +25,37 @@ class Main extends React.Component {
       budgetTable: [],
       accountTable: [],
       customLedgerTable: [],
-      outputFile: '',
-      ledgerFile: ''
+      outputFile: ''
     };
     this.changeAccount = this.changeAccount.bind(this);
     this.editRow = this.editRow.bind(this);
-    this.updateBalance = this.updateBalance.bind(this);
     this.editBudget = this.editBudget.bind(this);
     this.updateBudget = this.updateBudget.bind(this);
+    this.updateBalance = this.updateBalance.bind(this);
+    this.updateLedger = this.updateLedger.bind(this);
   }
 
   componentWillMount() {
     ipcRenderer.on('dropbox', (event, path) => {
       console.log(`Home: recieved dropbox IPC call with arg ${path}`);
       this.setState({
-        outputFile: `${path}\\budgetList.json`,
-        ledgerFile: `${path}\\customLedger.json`
+        outputFile: `${path}\\budgetList.json`
       });
     });
     ipcRenderer.on('config', (e, config) => {
-      console.log('Home: received new config');
+      console.log('Home: received new config', config);
       this.setState({ config });
     });
     ipcRenderer.on('accountList', (e, accountTable) => {
-      console.log('Home: received new accountList');
+      console.log('Home: received new accountList', accountTable);
       this.setState({ accountTable });
     });
     ipcRenderer.on('budgetList', (e, budgetTable) => {
-      console.log('Home: received new budgetList');
+      console.log('Home: received new budgetList', budgetTable);
       this.setState({ budgetTable });
     });
     ipcRenderer.on('customLedger', (e, customLedgerTable) => {
-      console.log('Home: received new customLedgerTable');
+      console.log('Home: received new customLedgerTable', customLedgerTable);
       this.setState({ customLedgerTable });
     });
     ipcRenderer.on('message', (e, loadingMessage) => {
@@ -65,14 +64,14 @@ class Main extends React.Component {
     });
     ipcRenderer.on('ready', () => {
       console.log('Home: got ready message');
-      this.changeAccount(this.state.accountIdx);
-      this.setState({ loadingMessage: 'ready' });
+      this.setState({ loadingMessage: 'ready' }, this.changeAccount(this.state.accountIdx));
     });
   }
 
   changeAccount(newAccount, refresh = false) {
-    const account = this.state.accountTable.find((acct) => acct.acctID === `${newAccount}`);
-    console.log('Main-changeAccount: received request to refresh account', newAccount, account);
+    const accountIdx = parseInt(newAccount, 10);
+    const account = this.state.accountTable.find(acct => parseInt(acct.acctID, 10) === accountIdx);
+    console.log('Home-changeAccount: received request to refresh account', newAccount, account);
     recalculateBalance(
       this.state.accountTable,
       this.state.budgetTable,
@@ -84,45 +83,131 @@ class Main extends React.Component {
         this.setState({
           data,
           account,
-          accountIdx: parseInt(newAccount, 10)
+          accountIdx
         });
       });
   }
 
-  editRow(txnID, txnDate, Description, Amount) {
+  editRow(txnID, txnDate, Description, Amount, action) {
     const newRecord = { txnID, txnDate, Description, Amount };
-    console.log('Main-editRow: custom ledger ', this.state.customLedgerTable);
-    modifyLedger(this.state.customLedgerTable, newRecord, this.state.ledgerFile, this.state.accountIdx, (err, data) => {
-      if (err) console.log(err);
-      console.log(data);
-      this.setState({ customLedgerTable: data }, this.changeAccount(this.state.accountIdx));
-    });
-  }
-
-  updateBalance() {
-    ipcRenderer.send('update');
+    console.log('Home-editRow: custom ledger ', this.state.customLedgerTable);
+    const budgetEntry = this.state.budgetTable
+      .filter(val => txnID.split('-')[0] === val.budID)
+      .reduce(val => val);
+    console.log('Home-editRow: budgetEntry', budgetEntry);
+    modifyLedger(
+      action,
+      this.state.customLedgerTable,
+      newRecord,
+      this.state.accountIdx,
+      budgetEntry,
+      (err, customLedgerTable) => {
+        if (err) {
+          console.log(err);
+        } else {
+          ipcRenderer.send('writeOutput', 'customLedger', customLedgerTable);
+          console.log('Home-editRow: received new ledger data', customLedgerTable);
+          recalculateBalance(
+            this.state.accountTable,
+            this.state.budgetTable,
+            this.state.customLedgerTable,
+            this.state.account,
+            this.state.displayCurrency,
+            [],
+            (error, data) => {
+              if (error) {
+                console.error('Error recalculating Balance', error);
+              } else {
+                this.setState({
+                  data,
+                  customLedgerTable
+                });
+              }
+            });
+        }
+      }
+    );
   }
 
   editBudget(accountIdx, viewBudget) {
     if (viewBudget) {
-      console.log('Main-editBudget: saving budget');
-      updateMaster(this.state.budgetTable, this.state.budget, this.state.outputFile, (err, budgetTable) => {
-        if (err) console.error('Main: error updating master budget table');
-        this.setState({ budgetTable, chartMode: true }, this.changeAccount(accountIdx));
-      });
+      console.log('Home-editBudget: saving budget');
+      updateMaster(
+        this.state.budgetTable,
+        this.state.budget,
+        (err, budgetTable) => {
+          if (err) {
+            console.error('Home: error updating master budget table');
+          } else {
+            ipcRenderer.send('writeOutput', 'budgetList', budgetTable);
+            this.setState({ budgetTable, chartMode: true }, this.changeAccount(accountIdx));
+          }
+        }
+      );
     } else {
-      console.log('Main: request to edit budget for account', accountIdx, typeof (accountIdx));
+      console.log('Home: request to edit budget for account', accountIdx, typeof (accountIdx));
       accountBudget(this.state.budgetTable, accountIdx, (e, budget) => {
-        if (e) console.log('Main: Error extracting budget', e);
-        this.setState({ budget, chartMode: false });
+        if (e) {
+          console.log('Home: Error extracting budget', e);
+        } else {
+          this.setState({ budget, chartMode: false });
+        }
       });
     }
   }
 
+  updateBalance() {
+    ipcRenderer.send('update');
+    recalculateBalance(
+      this.state.accountTable,
+      this.state.budgetTable,
+      this.state.customLedgerTable,
+      this.state.account,
+      this.state.displayCurrency,
+      [],
+      (error, data) => {
+        if (error) {
+          console.error('Error recalculating Balance', error);
+        } else {
+          this.setState({ data });
+        }
+      });
+  }
+
+  updateLedger() {
+    ipcRenderer.send('updateLedger');
+    recalculateBalance(
+      this.state.accountTable,
+      this.state.budgetTable,
+      this.state.customLedgerTable,
+      this.state.account,
+      this.state.displayCurrency,
+      [],
+      (error, data) => {
+        if (error) {
+          console.error('Error recalculating Balance', error);
+        } else {
+          this.setState({
+            data
+          });
+        }
+      });
+  }
+
   updateBudget(budgetRecord) {
-    const newRecord = budgetRecord;
-    newRecord.amount = parseFloat(budgetRecord.amount);
-    delete newRecord.editRow;
+    const newRecord = {
+      budID: budgetRecord.budID,
+      type: budgetRecord.type,
+      description: budgetRecord.description,
+      category: budgetRecord.category,
+      amount: parseFloat(budgetRecord.amount),
+      fromAccount: parseInt(budgetRecord.fromAccount, 10),
+      toAccount: parseInt(budgetRecord.toAccount, 10),
+      periodCount: parseInt(budgetRecord.periodCount, 10),
+      periodType: budgetRecord.periodType,
+      totalCount: parseInt(budgetRecord.totalCount, 10),
+      transactionDate: budgetRecord.transactionDate
+    };
     const currentBudget = this.state.budget.reduce((result, value) => {
       if (value.budID === newRecord.budID) {
         result.push(newRecord);
@@ -131,7 +216,7 @@ class Main extends React.Component {
       }
       return result;
     }, []);
-    console.log('Main-updateBudget: updating this account budget to ', currentBudget);
+    console.log('Home-updateBudget: updating this account budget to ', currentBudget);
     this.setState({ budget: currentBudget });
   }
 
@@ -157,6 +242,7 @@ class Main extends React.Component {
           updateBalance={this.updateBalance}
           editBudget={this.editBudget}
           viewBudget={!this.state.chartMode}
+          updateLedger={this.updateLedger}
         />);
       if (this.state.chartMode) {
         visibleBlocks = (

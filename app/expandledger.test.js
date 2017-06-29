@@ -83,6 +83,21 @@ const testLedgerEntry =
   }
   ;
 
+const testBudgetItem =
+  {
+    amount: 18000,
+    budID: '41',
+    category: 'Corp',
+    description: 'Loan to Shareholder',
+    fromAccount: 5,
+    periodCount: 1,
+    periodType: 'Month',
+    toAccount: 1,
+    totalCount: 0,
+    transactionDate: '2017-07-12',
+    type: 'Transfer'
+  };
+
 const testLedger = true;
 
 if (testLedger) {
@@ -108,7 +123,7 @@ if (testLedger) {
     .then(result => {
       customLedger = result.customLedger;
       console.log('running modifyLedger');
-      modifyLedger(customLedger, testLedgerEntry, './app/test_results/customLedger.json', 4, (err, data) => {
+      modifyLedger(customLedger, testLedgerEntry, './app/test_results/customLedger.json', 4, testBudgetItem, (err, data) => {
         if (err) console.error(err);
         console.log('  new custom ledger:', data);
         console.log('finished modifyLedger');
