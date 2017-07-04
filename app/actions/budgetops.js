@@ -19,11 +19,11 @@ function accountBudget(budgetList, acctID, callback) {
   }
 }
 /*
-updateMaster is used when budget items are edited or added
+updateMaster is used when budget items are edited or added. Assumes that newBudgetList
+contains only items in budgetList. (new Items are not handled here)
 
 @param budgetList:Array - the master budget list, an array of budget objects
-@param newBudgetList:Array -  the updated budget list
-@param outputFile:String - the location of where to save the budgetlist on disk
+@param newBudgetList:Array -  the updated budget list for a single account
 */
 function updateMaster(budgetList, newBudgetList, callback) {
   try {
@@ -33,6 +33,7 @@ function updateMaster(budgetList, newBudgetList, callback) {
         if (updated.length > 0) {
           result.push(updated.reduce(val => val));
         } else {
+          // newBudgetList doesn't contain an item that matches
           result.push(oldItem);
         }
         return result;

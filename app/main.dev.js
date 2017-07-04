@@ -83,7 +83,6 @@ app.on('ready', async () => {
     }
     mainWindow.show();
     mainWindow.focus();
-    mainWindow.webContents.send('dropbox', dropBoxPath, '');
     getAllData(mainWindow.webContents)
       .then((result) => result.map(item => {
         if (mainWindow) mainWindow.webContents.send(item.dataType, item.value);
@@ -160,23 +159,19 @@ if (process.env.LOCALAPPDATA) {
 // event listeners
 
 ipcMain.on('update', e => {
-  console.log('Main: received update request');
-  if (mainWindow) {
-    updateAccounts(mainWindow.webContents)
-      .then(() => mainWindow.webContents.send('ready'))
-      .catch(err => console.error('Error with udpate', err));
-  }
+  console.log('Main: received update request from window', e.sender.currentIndex);
+  if (mainWindow) updateAccounts(mainWindow.webContents);
 });
 
 ipcMain.on('writeOutput', (e, dataType, value) => {
-  console.log(`Main: received call to update ${dataType}`);
+  console.log(`Main: received call to update ${dataType} from window`, e.sender.currentIndex);
   fse.writeFile(`${dropBoxPath}\\${dataType}.json`, `{ "${dataType}": ${JSON.stringify(value)}}`, err => {
     if (err) console.error(err);
   });
 });
 
 ipcMain.on('updateLedger', e => {
-  console.log('Main: received call to update ledger');
+  console.log('Main: received call to update ledger from window', e.sender.currentIndex);
   getData('customLedger')
     .then(results => {
       if (mainWindow) {

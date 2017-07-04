@@ -33,7 +33,7 @@
   },
   "browserslist": "electron 1.6",
   "build": {
-    "productName": "ElectronReact",
+    "productName": "BalanceBeam",
     "appId": "org.develar.ElectronReact",
     "files": [
       "dist/",

@@ -65,7 +65,10 @@ BalanceTable.propTypes = {
   editTxn: PropTypes.shape({
     txnID: PropTypes.string,
     txnDate: PropTypes.string,
-    Amount: PropTypes.number,
+    Amount: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.string
+    ]),
     Account: PropTypes.number,
     Description: PropTypes.string
   }).isRequired,

@@ -145,14 +145,18 @@ to the specified output currency
 @param toCurrency:String 'CAD' or 'USD' the output currency
 */
 function convertCurrency(amount, fromCurrency, toCurrency) {
-  if (fromCurrency === toCurrency) return Math.round(amount * 100) / 100;
-  if (fromCurrency === CAD) {
-    return Math.round((amount / (toCurrency === USD ? USDCAD : 1)) * 100) / 100;
+  let convertAmount = 0;
+  if (fromCurrency === toCurrency) {
+    convertAmount = Math.round(amount * 100) / 100;
+  } else {
+    if (fromCurrency === CAD) {
+      convertAmount = Math.round((amount / USDCAD) * 100) / 100;
+    }
+    if (fromCurrency === USD) {
+      convertAmount = Math.round((amount * USDCAD) * 100) / 100;
+    }
   }
-  if (fromCurrency === USD) {
-    return Math.round(amount * (toCurrency === USD ? USDCAD : 1) * 100) / 100;
-  }
-  return 0;
+  return convertAmount;
 }
 /*
 refreshBalance recalculates the running balance of the ledger
@@ -255,5 +259,6 @@ function expandLedger(accountList, budgetList, customTxnList, account, callback)
 }
 
 module.exports = {
-  recalculateBalance
+  recalculateBalance,
+  convertCurrency
 };

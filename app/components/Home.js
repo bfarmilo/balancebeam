@@ -1,12 +1,37 @@
 import React from 'react';
-import { recalculateBalance } from '../actions/expandledger';
+import { recalculateBalance, convertCurrency } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
-import ControlArea from '../containers/ControlArea';
+import ControlArea from '../components/ControlArea';
 import BudgetEditor from '../containers/BudgetEditor';
 
 const ipcRenderer = require('electron').ipcRenderer;
+
+const currentDate = new Date();
+
+const blankBud = {
+  budID: '',
+  type: 'Expense',
+  description: '',
+  category: 'Home',
+  fromAccount: 1,
+  toAccount: 0,
+  amount: 0,
+  periodCount: 1,
+  periodType: 'Month',
+  totalCount: 0,
+  transactionDate: currentDate.toISOString().split('T')[0]
+};
+
+const blankTxn = {
+  txnID: '',
+  txnDate: '',
+  Amount: 0,
+  Account: 0,
+  Custom: false,
+  Description: ''
+};
 
 // const exchangeRate = 'http://api.fixer.io/latest?symbols=CAD&base=USD';
 
@@ -25,32 +50,32 @@ class Main extends React.Component {
       budgetTable: [],
       accountTable: [],
       customLedgerTable: [],
-      outputFile: '',
-      editTxn: { txnID: '', txnDate: '', Amount: 0, Account: 0, Custom: false, Description: '' }
+      editTxn: blankTxn,
+      editBud: blankBud
     };
     this.changeAccount = this.changeAccount.bind(this);
-    this.editRow = this.editRow.bind(this);
-    this.editBudget = this.editBudget.bind(this);
-    this.updateBudget = this.updateBudget.bind(this);
-    this.updateBalance = this.updateBalance.bind(this);
+    this.showSaveBudget = this.showSaveBudget.bind(this);
+    this.editBudgetRow = this.editBudgetRow.bind(this);
+    this.handleBudgetChange = this.handleBudgetChange.bind(this);
+    this.requestUpdate = this.requestUpdate.bind(this);
+    this.editLedgerRow = this.editLedgerRow.bind(this);
     this.updateLedger = this.updateLedger.bind(this);
     this.handleLedgerChange = this.handleLedgerChange.bind(this);
+    this.refreshLedgerBalance = this.refreshLedgerBalance.bind(this);
+    this.changeViewCurrency = this.changeViewCurrency.bind(this);
   }
 
   componentWillMount() {
-    ipcRenderer.on('dropbox', (event, path) => {
-      console.log(`Home: recieved dropbox IPC call with arg ${path}`);
-      this.setState({
-        outputFile: `${path}\\budgetList.json`
-      });
-    });
     ipcRenderer.on('config', (e, config) => {
       console.log('Home: received new config', config);
       this.setState({ config });
     });
     ipcRenderer.on('accountList', (e, accountTable) => {
       console.log('Home: received new accountList', accountTable);
-      this.setState({ accountTable });
+      const account = accountTable
+        .find(acct => parseInt(acct.acctID, 10) === this.state.accountIdx);
+      console.log('Home: resolved new account', account);
+      this.setState({ accountTable, account });
     });
     ipcRenderer.on('budgetList', (e, budgetTable) => {
       console.log('Home: received new budgetList', budgetTable);
@@ -66,71 +91,170 @@ class Main extends React.Component {
     });
     ipcRenderer.on('ready', () => {
       console.log('Home: got ready message');
-      this.setState({ loadingMessage: 'ready' }, this.changeAccount(this.state.accountIdx));
+      this.refreshLedgerBalance(
+        this.state.accountTable,
+        this.state.budgetTable,
+        this.state.customLedgerTable,
+        this.state.account,
+        this.state.displayCurrency,
+        this.state.data
+      );
     });
   }
 
-  changeAccount(newAccount, refresh = false) {
-    const accountIdx = parseInt(newAccount, 10);
-    const account = this.state.accountTable.find(acct => parseInt(acct.acctID, 10) === accountIdx);
-    console.log('Home-changeAccount: received request to refresh account', newAccount, account);
+  refreshLedgerBalance(aTable, bTable, cTable, account, currency, oldData, refresh = false) {
+    console.log('Home-refreshLedgerBalance: received request to refresh account', account);
     recalculateBalance(
-      this.state.accountTable,
-      this.state.budgetTable,
-      this.state.customLedgerTable,
+      aTable,
+      bTable,
+      cTable,
       account,
-      this.state.displayCurrency,
-      (refresh ? this.state.data : []),
+      currency,
+      (refresh ? oldData : []),
       (err, data) => {
-        this.setState({
-          data,
-          account,
-          accountIdx
-        });
+        if (err) {
+          console.error(err);
+        } else {
+          this.setState({
+            accountTable: aTable,
+            budgetTable: bTable,
+            customLedgerTable: cTable,
+            account,
+            displayCurrency: currency,
+            data,
+            loadingMessage: 'ready'
+          });
+        }
       });
   }
 
-  handleLedgerChange(event) {
-    // This updates the active edited ledger
-    // need a state for the currently edited ledger
-    const dataType = event.target.name.split('_')[1];
-    console.log('testing', { [dataType]: event.target.value });
-    console.log('Handling data change with type', dataType, event.target.value);
-    const newRecord = Object.assign({}, this.state.editTxn);
-    newRecord[dataType] = event.target.value;
-    this.setState({ editTxn: newRecord });
-
-    /* const updatedLedger = this.state.data.reduce((result, v) => {
-       if (v.txnID === this.state.editTxn.txnID) {
-         const newRecord = {
-           txnID: v.txnID,
-           txnDate: v.txnDate,
-           Amount: v.Amount,
-           Description: v.Description,
-           Account: v.Account,
-         };
-         newRecord[dataType] = event.target.value;
-         result.push(newRecord);
-       } else {
-         result.push(v);
-       }
-       return result;
-     }, []);
-    this.setState({ data: updatedLedger });
-    */
+  changeAccount(event) {
+    const accountIdx = parseInt(event.target.value, 10);
+    this.setState({ loadingMessage: 'loading new account' }, () => {
+      const account = this.state.accountTable
+        .find(acct => parseInt(acct.acctID, 10) === accountIdx);
+      this.refreshLedgerBalance(
+        this.state.accountTable,
+        this.state.budgetTable,
+        this.state.customLedgerTable,
+        account,
+        account.currency,
+        this.state.data
+      );
+      this.setState({ accountIdx });
+    });
   }
 
-  editRow(event) {
+  changeViewCurrency(event) {
+    console.log('Main: request to change display currency to', event.target.innerHTML);
+    if (this.state.displayCurrency === 'USD') {
+      this.refreshLedgerBalance(
+        this.state.accountTable,
+        this.state.budgetTable,
+        this.state.customLedgerTable,
+        this.state.account,
+        'CAD',
+        this.state.data
+      );
+    } else {
+      this.refreshLedgerBalance(
+        this.state.accountTable,
+        this.state.budgetTable,
+        this.state.customLedgerTable,
+        this.state.account,
+        'USD',
+        this.state.data
+      );
+    }
+  }
+
+  handleLedgerChange(event) {
+    const dataType = event.target.name.split('_')[1];
+    const editTxn = { ...this.state.editTxn };
+    editTxn[dataType] = event.target.value;
+    this.setState({ editTxn });
+  }
+
+  handleBudgetChange(event) {
+    const [budID, dataType] = event.target.name.split('_');
+    const editBud = { ...this.state.editBud };
+    console.log('budget change detected on', budID, dataType);
+    editBud[dataType] = event.target.value;
+    this.setState({ editBud });
+  }
+
+  editBudgetRow(event) {
+    const [budID, action] = event.currentTarget.name.split('_');
+    console.log(`Main: got ${action} budget event on ${budID}`, event.currentTarget.name);
+    if (budID === 'new') {
+      console.log('Main:got request to add new budget entry');
+      // set default amounts, skip the 'find
+      const newRecord = { ...blankBud };
+      this.setState({ editBud: newRecord });
+    }
+    if (action === 'enable') {
+      console.log('found budID', budID);
+      this.setState({
+        editBud: this.state.budget.find(entry => entry.budID === budID)
+      });
+    }
+    if (action === 'modify') {
+      let currentBudget = [];
+      let currentBudgetTable = [];
+      const newRecord = { ...this.state.editBud };
+      newRecord.amount = parseFloat(newRecord.amount);
+      newRecord.fromAccount = parseInt(newRecord.fromAccount, 10);
+      newRecord.toAccount = parseInt(newRecord.toAccount, 10);
+      newRecord.periodCount = parseInt(newRecord.periodCount, 10);
+      if (budID === 'new') {
+        console.log(`Main: adding new record with budID ${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`);
+        newRecord.budID = `${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`;
+        currentBudgetTable = this.state.budgetTable.concat(newRecord);
+        currentBudget = this.state.budget.concat(newRecord);
+      } else {
+        currentBudgetTable = this.state.budgetTable;
+        currentBudget = this.state.budget.reduce((result, value) => {
+          if (value.budID === newRecord.budID) {
+            result.push(newRecord);
+          } else {
+            result.push(value);
+          }
+          return result;
+        }, []);
+      }
+      console.log('Home-editBudgetRow: updating this account budget to ', currentBudget);
+      updateMaster(currentBudgetTable, currentBudget, (err, updatedList) => {
+        if (err) {
+          console.error(err);
+        } else {
+          ipcRenderer.send('writeOutput', 'budgetList', updatedList);
+          this.setState({
+            budgetTable: currentBudgetTable,
+            budget: currentBudget,
+            editBud: blankBud
+          });
+        }
+      });
+    }
+    if (action === 'clear') {
+      console.log('Main: request to delete budget entry'.budID);
+      const currentBudgetTable = this.state.budgetTable.filter(val => val.budID !== budID);
+      ipcRenderer.send('writeOutput', 'budgetList', currentBudgetTable);
+      this.setState({ budgetTable: currentBudgetTable, editBud: blankBud });
+    }
+  }
+
+  editLedgerRow(event) {
     const [txnID, action] = event.currentTarget.name.split('_');
     if (action === 'enable') {
       const { txnDate, Description, Amount } = this.state.data.find(entry => entry.txnID === txnID);
       this.setState({ editTxn: { txnID, txnDate, Description, Amount } });
     } else {
-      console.log('Home-editRow: custom ledger ', this.state.customLedgerTable);
+      console.log('Home-editLedgerRow: custom ledger ', this.state.customLedgerTable);
       const budgetEntry = this.state.budgetTable
         .filter(val => txnID.split('-')[0] === val.budID)
         .reduce(val => val);
-      console.log('Home-editRow: budgetEntry', budgetEntry);
+      console.log('Home-editLedgerRow: budgetEntry', budgetEntry);
       modifyLedger(
         action,
         this.state.customLedgerTable,
@@ -142,34 +266,24 @@ class Main extends React.Component {
             console.log(err);
           } else {
             ipcRenderer.send('writeOutput', 'customLedger', customLedgerTable);
-            console.log('Home-editRow: received new ledger data', customLedgerTable);
-            recalculateBalance(
+            console.log('Home-editLedgerRow: received new ledger data', customLedgerTable);
+            this.refreshLedgerBalance(
               this.state.accountTable,
               this.state.budgetTable,
-              this.state.customLedgerTable,
+              customLedgerTable,
               this.state.account,
               this.state.displayCurrency,
-              [],
-              (error, data) => {
-                if (error) {
-                  console.error('Error recalculating Balance', error);
-                } else {
-                  this.setState({
-                    data,
-                    customLedgerTable,
-                    editTxn: { txnID: '', txnDate: '', Amount: 0, Account: 0, Custom: false, Description: '' }
-                  });
-                }
-              });
+              this.state.data
+            );
+            this.setState({ editTxn: blankTxn });
           }
-        }
-      );
+        });
     }
   }
 
-  editBudget(accountIdx, viewBudget) {
-    if (viewBudget) {
-      console.log('Home-editBudget: saving budget');
+  showSaveBudget() {
+    if (!this.state.chartMode) {
+      console.log('Home-showSaveBudget: saving budget');
       updateMaster(
         this.state.budgetTable,
         this.state.budget,
@@ -178,13 +292,21 @@ class Main extends React.Component {
             console.error('Home: error updating master budget table');
           } else {
             ipcRenderer.send('writeOutput', 'budgetList', budgetTable);
-            this.setState({ budgetTable, chartMode: true }, this.changeAccount(accountIdx));
+            this.refreshLedgerBalance(
+              this.state.accountTable,
+              budgetTable,
+              this.state.customLedgerTable,
+              this.state.account,
+              this.state.displayCurrency,
+              this.state.data
+            );
+            this.setState({ chartMode: true });
           }
         }
       );
     } else {
-      console.log('Home: request to edit budget for account', accountIdx, typeof (accountIdx));
-      accountBudget(this.state.budgetTable, accountIdx, (e, budget) => {
+      console.log('Home: request to edit budget for account', this.state.accountIdx);
+      accountBudget(this.state.budgetTable, this.state.accountIdx, (e, budget) => {
         if (e) {
           console.log('Home: Error extracting budget', e);
         } else {
@@ -194,125 +316,63 @@ class Main extends React.Component {
     }
   }
 
-  updateBalance() {
+  requestUpdate() {
     ipcRenderer.send('update');
-    recalculateBalance(
-      this.state.accountTable,
-      this.state.budgetTable,
-      this.state.customLedgerTable,
-      this.state.account,
-      this.state.displayCurrency,
-      [],
-      (error, data) => {
-        if (error) {
-          console.error('Error recalculating Balance', error);
-        } else {
-          this.setState({ data });
-        }
-      });
   }
 
   updateLedger() {
     ipcRenderer.send('updateLedger');
-    recalculateBalance(
-      this.state.accountTable,
-      this.state.budgetTable,
-      this.state.customLedgerTable,
-      this.state.account,
-      this.state.displayCurrency,
-      [],
-      (error, data) => {
-        if (error) {
-          console.error('Error recalculating Balance', error);
-        } else {
-          this.setState({
-            data
-          });
-        }
-      });
-  }
-
-  updateBudget(budgetRecord) {
-    const newRecord = {
-      budID: budgetRecord.budID,
-      type: budgetRecord.type,
-      description: budgetRecord.description,
-      category: budgetRecord.category,
-      amount: parseFloat(budgetRecord.amount),
-      fromAccount: parseInt(budgetRecord.fromAccount, 10),
-      toAccount: parseInt(budgetRecord.toAccount, 10),
-      periodCount: parseInt(budgetRecord.periodCount, 10),
-      periodType: budgetRecord.periodType,
-      totalCount: parseInt(budgetRecord.totalCount, 10),
-      transactionDate: budgetRecord.transactionDate
-    };
-    const currentBudget = this.state.budget.reduce((result, value) => {
-      if (value.budID === newRecord.budID) {
-        result.push(newRecord);
-      } else {
-        result.push(value);
-      }
-      return result;
-    }, []);
-    console.log('Home-updateBudget: updating this account budget to ', currentBudget);
-    this.setState({ budget: currentBudget });
   }
 
   render() {
     let visibleBlocks;
-    let controlArea;
+    const displayBalance = convertCurrency(this.state.account.balance, this.state.account.currency, this.state.displayCurrency);
     const minBalance = Math.min(...this.state.data.map((v) => v.Balance));
-    if (this.state.loadingMessage !== 'ready') {
-      controlArea = (
-        <div />
-      );
+    const controlArea = (
+      <ControlArea
+        accountTable={this.state.accountTable}
+        account={this.state.account}
+        selectAccount={this.changeAccount}
+        updateBalance={this.requestUpdate}
+        editBudget={this.showSaveBudget}
+        viewBudget={!this.state.chartMode}
+        updateLedger={this.updateLedger}
+        viewCurr={this.state.displayCurrency}
+        changeCurr={this.changeViewCurrency}
+      />);
+    if (this.state.chartMode) {
       visibleBlocks = (
         <div>
-          {this.state.loadingMessage}
+          <ChartArea data={this.state.data} />
+          <BalanceTable
+            balance={displayBalance}
+            minBalance={minBalance}
+            currentDate={new Date()}
+            ledger={this.state.data}
+            editTxn={this.state.editTxn}
+            editEntry={this.editLedgerRow}
+            handleDataChange={this.handleLedgerChange}
+          />
         </div>
       );
     } else {
-      controlArea = (
-        <ControlArea
-          accountTable={this.state.accountTable}
-          account={this.state.account}
-          selectAccount={this.changeAccount}
-          updateBalance={this.updateBalance}
-          editBudget={this.editBudget}
-          viewBudget={!this.state.chartMode}
-          updateLedger={this.updateLedger}
-        />);
-      if (this.state.chartMode) {
-        visibleBlocks = (
-          <div>
-            <ChartArea data={this.state.data} />
-            <BalanceTable
-              balance={this.state.account.balance}
-              minBalance={minBalance}
-              currentDate={new Date()}
-              ledger={this.state.data}
-              editTxn={this.state.editTxn}
-              editEntry={this.editRow}
-              handleDataChange={this.handleLedgerChange}
-            />
-          </div>
-        );
-      } else {
-        visibleBlocks = (
-          <div>
-            <BudgetEditor
-              accountTable={this.state.accountTable}
-              budgetItems={this.state.budget}
-              updateBudget={this.updateBudget}
-            />
-          </div>
-        );
-      }
+      visibleBlocks = (
+        <div>
+          <BudgetEditor
+            accountTable={this.state.accountTable}
+            accountBudget={this.state.budget}
+            editEntry={this.editBudgetRow}
+            editBud={this.state.editBud}
+            handleDataChange={this.handleBudgetChange}
+          />
+        </div>
+      );
     }
+
     return (
       <div>
         {controlArea}
-        {visibleBlocks}
+        {this.state.loadingMessage !== 'ready' ? <div>{this.state.loadingMessage}</div> : visibleBlocks}
       </div>
     );
   }
