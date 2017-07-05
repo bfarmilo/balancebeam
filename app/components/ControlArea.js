@@ -1,32 +1,36 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import styles from './ControlArea.css';
 
 const ControlArea = (props) => (
   <div className="LedgerArea">
-    <select name="ChooseAcct" id="accountselect" disabled={props.viewBudget} onChange={props.selectAccount}>
-      {props.accountTable.reduce((result, val) => {
-        if (val.includeAccount) {
-          result.push(
-            <option key={val.acctID} value={val.acctID}>
-              {val.accountName}: $ {val.balance}
-            </option>
-          );
-        } else if (val.balance !== 0) {
-          result.push(
-            <option key={val.acctID} disabled value={parseInt(val.acctID, 10)}>
-              {val.accountName}: $ {val.balance}
-            </option>
-          );
+    <span className={styles.customdropdown}>
+      <select name="ChooseAcct" id="accountselect" disabled={props.viewBudget} onChange={props.selectAccount}>
+        {props.accountTable.reduce((result, val) => {
+          if (val.includeAccount) {
+            result.push(
+              <option key={val.acctID} value={val.acctID}>
+                {val.accountName}: $ {val.balance}
+              </option>
+            );
+          } else if (val.balance !== 0) {
+            result.push(
+              <option key={val.acctID} disabled value={parseInt(val.acctID, 10)}>
+                {val.accountName}: $ {val.balance}
+              </option>
+            );
+          }
+          return result;
+        }, [])
         }
-        return result;
-      }, [])
-      }
-    </select>
-    <input type="text" disabled className="Currency" value={`as of ${props.account.balanceDate}`} />
-    <button type="button" onClick={props.updateBalance}>Update</button>
-    <button type="button" onClick={props.editBudget}>{props.viewBudget ? 'Save' : 'Edit Budget'}</button>
-    <button type="button" onClick={props.updateLedger}>Refresh Ledger</button>
-    <button type="button" onClick={props.changeCurr}>{props.viewCurr}</button>
+      </select>
+    </span>
+    <div className={styles.buttonGroup}>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateBalance}>Update</button>
+      <button type="button" className={styles.toggleButton} onClick={props.editBudget}>{props.viewBudget ? 'View Chart' : 'Edit Budget'}</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateLedger}>Refresh</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.changeCurr}>{props.viewCurr}</button>
+    </div>
   </div>
 );
 

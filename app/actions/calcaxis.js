@@ -26,24 +26,18 @@ const makeTickVals = (startRange, endRange, numTicks) => (
   new Promise((resolve, reject) => {
     niceNumber(endRange - startRange, 0)
       .then(result => niceNumber((result / numTicks), 1))
-      .then(step => {
-        const low = Math.floor(startRange / step) * step;
-        const high = Math.ceil(endRange / step) * step;
-        const zeroPos = high >= 0 ? (high - 0) / (high - low) : 0;
-        return ({
-          low,
-          high,
-          step,
-          zeroPos
-        });
-      }
+      .then(step => ({
+        low: Math.floor(startRange / step) * step,
+        high: Math.ceil(endRange / step) * step,
+        step
+      })
       )
       .then(output => {
         const returnArray = [];
         for (let i = 0; i <= numTicks; i += 1) {
           returnArray.push((i * output.step) + output.low);
         }
-        return resolve({ zeroPos: output.zeroPos, tickValues: returnArray });
+        return resolve(returnArray);
       })
       .catch(err => reject(err));
   })

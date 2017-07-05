@@ -55,12 +55,13 @@ class Main extends React.Component {
       customLedgerTable: [],
       editTxn: blankTxn,
       editBud: blankBud,
-      tickValData: { zeroPos: 1, tickValues: [] }
+      tickValues: [],
+      zeroPos: 0
     };
     this.minBalance = 0;
     this.maxBalance = 0;
     this.changeAccount = this.changeAccount.bind(this);
-    this.showSaveBudget = this.showSaveBudget.bind(this);
+    this.toggleShowBudget = this.toggleShowBudget.bind(this);
     this.editBudgetRow = this.editBudgetRow.bind(this);
     this.handleBudgetChange = this.handleBudgetChange.bind(this);
     this.editLedgerRow = this.editLedgerRow.bind(this);
@@ -122,7 +123,9 @@ class Main extends React.Component {
           this.minBalance = Math.min(...data.map(v => v.Balance));
           this.maxBalance = Math.max(...data.map(v => v.Balance));
           makeTickVals(this.minBalance, this.maxBalance, 8)
-            .then(tickValData => {
+            .then(tickValues => {
+              this.maxBalance = Math.max(...tickValues, this.maxBalance);
+              this.minBalance = Math.min(...tickValues, this.minBalance);
               this.setState({
                 accountTable: aTable,
                 budgetTable: bTable,
@@ -130,8 +133,12 @@ class Main extends React.Component {
                 account,
                 displayCurrency: currency,
                 data,
-                tickValData,
-                loadingMessage: 'ready'
+                tickValues,
+                loadingMessage: 'ready',
+                zeroPos: (this.maxBalance > 0
+                  ? (this.maxBalance - 0) / (this.maxBalance - this.minBalance)
+                  : 0
+                )
               });
               return 'OK';
             })
@@ -240,12 +247,20 @@ class Main extends React.Component {
         if (err) {
           console.error(err);
         } else {
-          ipcRenderer.send('writeOutput', 'budgetList', updatedList);
+          this.refreshLedgerBalance(
+            this.state.accountTable,
+            updatedList,
+            this.state.customLedgerTable,
+            this.state.account,
+            this.state.currency,
+            this.state.data
+          );
           this.setState({
-            budgetTable: currentBudgetTable,
             budget: currentBudget,
             editBud: blankBud
           });
+          console.log('Home-editBudgetRow: writing new budget to file');
+          ipcRenderer.send('writeOutput', 'budgetList', updatedList);
         }
       });
     }
@@ -303,29 +318,10 @@ class Main extends React.Component {
     }
   }
 
-  showSaveBudget() {
+  toggleShowBudget() {
     if (!this.state.chartMode) {
-      console.log('Home-showSaveBudget: saving budget');
-      updateMaster(
-        this.state.budgetTable,
-        this.state.budget,
-        (err, budgetTable) => {
-          if (err) {
-            console.error('Home: error updating master budget table');
-          } else {
-            ipcRenderer.send('writeOutput', 'budgetList', budgetTable);
-            this.refreshLedgerBalance(
-              this.state.accountTable,
-              budgetTable,
-              this.state.customLedgerTable,
-              this.state.account,
-              this.state.displayCurrency,
-              this.state.data
-            );
-            this.setState({ chartMode: true });
-          }
-        }
-      );
+      console.log('Home-toggleShowBudget: switching to chart mode');
+      this.setState({ chartMode: true, editBud: blankBud });
     } else {
       console.log('Home: request to edit budget for account', this.state.accountIdx);
       accountBudget(this.state.budgetTable, this.state.accountIdx, (e, budget) => {
@@ -351,7 +347,7 @@ class Main extends React.Component {
         account={this.state.account}
         selectAccount={this.changeAccount}
         updateBalance={() => ipcRenderer.send('update')}
-        editBudget={this.showSaveBudget}
+        editBudget={this.toggleShowBudget}
         viewBudget={!this.state.chartMode}
         updateLedger={() => ipcRenderer.send('updateLedger')}
         viewCurr={this.state.displayCurrency}
@@ -360,7 +356,7 @@ class Main extends React.Component {
     if (this.state.chartMode) {
       visibleBlocks = (
         <div>
-          <ChartArea data={this.state.data} tickValData={this.state.tickValData} />
+          <ChartArea data={this.state.data} tickValues={this.state.tickValues} zeroPos={this.state.zeroPos} />
           <BalanceTable
             balance={displayBalance}
             minBalance={this.minBalance}

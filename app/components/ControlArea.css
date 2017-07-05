@@ -1,0 +1,92 @@
+.toggleButtonGroup{
+  display: flex;
+  margin: 10px auto;
+}
+
+.toggleButton {
+  display: inline-block;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  padding: .8em;
+  background: #009ED8;
+  border: none;
+  color: white;
+  transition: .2s;
+  border-radius: 3px;
+  font-size: 1em;
+  margin: 1px;
+}
+
+.toggleButton:hover {
+  background: #0079a5;
+}
+.toggleButton:active,
+.toggleButton:focus {
+  background: #002e3f;
+  outline: none;
+}
+.toggleButton {
+  min-width: 8em;
+}
+
+/* Custom dropdown */
+.customdropdown {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.customdropdown select {
+  background-color: #009ED8;
+  color: white;
+  font-size: inherit;
+  padding: .8em;
+  padding-right: 2.5em;
+  border: 0;
+  margin: 1px;
+  border-radius: 3px;
+  text-indent: 0.01px;
+  text-overflow: '';
+  -webkit-appearance: button; /* hide default arrow in chrome OSX */
+}
+
+.customdropdown::before,
+.customdropdown::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.customdropdown::after { /*  Custom dropdown arrow */
+  content: "\25BC";
+  height: 1em;
+  font-size: .625em;
+  line-height: 1;
+  right: 1.2em;
+  top: 50%;
+  margin-top: -.5em;
+}
+
+.customdropdown::before { /*  Custom dropdown arrow cover */
+  width: 2em;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 0 3px 3px 0;
+}
+
+.customdropdown select[disabled] {
+  color: rgba(0,0,0,.3);
+}
+
+.customdropdown select[disabled]::after {
+  color: rgba(0,0,0,.1);
+}
+
+.customdropdown::before {
+  background-color: rgba(0,0,0,.15);
+}
+
+.customdropdown::after {
+  color: rgba(0,0,0,.4);
+}
