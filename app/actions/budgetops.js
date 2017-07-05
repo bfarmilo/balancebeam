@@ -50,7 +50,7 @@ customLedger writes a modified single ledger entry into the customLedger so it w
 @param account:number - the account currently being viewed
 @param budgetEntry - the matching parent budget entry for this transaction
 */
-function modifyLedger(action, customLedger, modifiedEntry, account, budgetEntry, callback) {
+function modifyLedger(action, customLedger, modifiedEntry, account, currency, budgetEntry, callback) {
   // merge newEntry into the customLedger
   try {
     console.log(`'modifyLedger called with action ${action}`);
@@ -77,7 +77,8 @@ function modifyLedger(action, customLedger, modifiedEntry, account, budgetEntry,
             fromAccount,
             toAccount,
             Description: modifiedEntry.Description,
-            txnDate: modifiedEntry.txnDate
+            txnDate: modifiedEntry.txnDate,
+            currency
           };
           console.log(`modifyLedger: looking for entry ${newEntry}`);
           if (customLedger.find(item => item.txnID === newEntry.txnID)) {

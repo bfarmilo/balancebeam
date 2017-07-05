@@ -6,7 +6,7 @@ const periodCounts = {
   Week: 52
 };
 const exchangeRates = {
-  USD: 1.3
+  USD: 1.26
 };
 
 type ledgerItem = {
@@ -63,7 +63,9 @@ function expandItem(
   budgetRecord,
   startDate,
   endDate,
-  debitCredit
+  debitCredit,
+  fromCurrency,
+  toCurrency
 ): Array<ledgerItem> {
   // creates a transaction ID txnID of the form 'budID-i'
   // where i is the expanded count (0 is the one matching the start date)
@@ -87,7 +89,7 @@ function expandItem(
 
   if (currentAccount.includeAccount) {
     // ^ future, if 'combined' mode is enabled
-    Amount = (isDebit ? -1 * budgetRecord.amount : budgetRecord.amount);
+    Amount = convertCurrency((isDebit ? -1 * budgetRecord.amount : budgetRecord.amount), fromCurrency, toCurrency);
     Account = parseInt(currentAccount.acctID, 10);
     Description = budgetRecord.description;
     const MAX_ITEMS = budgetRecord.totalCount !== 0 ? budgetRecord.totalCount : NUM_MONTHS * 3;
@@ -116,7 +118,7 @@ function expandItem(
         returnArray.push(currentEntry);
       }
     }
-  }// now look for matching custom transactions and replace inthe ledger table
+  }// now look for matching custom transactions and replace in the ledger table
   return returnArray.reduce((result, item) => {
     const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
     if (updated.length > 0) {
@@ -124,7 +126,7 @@ function expandItem(
       const newItem = {
         txnID: updated[0].txnID,
         txnDate: updated[0].txnDate,
-        Amount: updated[0].Amount * (isDebit ? -1 : 1),
+        Amount: convertCurrency(updated[0].Amount * (isDebit ? -1 : 1), updated[0].currency, toCurrency),
         Account,
         Description: updated[0].Description,
         Custom: true
@@ -166,11 +168,11 @@ refreshBalance recalculates the running balance of the ledger
 @param fromCurr:String 'CAD' or 'USD', the native currencty of the account
 @param toCurr:String 'CAD' or 'USD' the output currency to calculate to
 */
-function refreshBalance(ledgerList, startBalance, fromCurr, toCurr) {
+function refreshBalance(ledgerList, startBalance) {
   let runningBalance = startBalance;
   return ledgerList.map(entry => {
     const result = entry;
-    result.Amount = convertCurrency(entry.Amount, fromCurr, toCurr);
+    result.Amount = entry.Amount;
     result.Balance = Math.round((runningBalance + entry.Amount) * 100) / 100;
     runningBalance = entry.Balance;
     return result;
@@ -215,18 +217,18 @@ function recalculateBalance(
   let entryList = [];
   startBalance = convertCurrency(account.balance, account.currency, showCurrency);
   if (refreshData.length > 0) {
-    const returnData = refreshBalance(refreshData, startBalance, account.currency, showCurrency);
+    const returnData = refreshBalance(refreshData, startBalance);
     // passed an array, just need to refresh balances & re-sort
     sortLedger(returnData);
     return callback(null, returnData);
   }
-  expandLedger(accountList, budgetList, customTxnList, account, (e, data) => {
+  expandLedger(accountList, budgetList, customTxnList, account, showCurrency, (e, data) => {
     if (e) return callback(e);
     entryList = data;
     return callback(
       null,
-      refreshBalance(entryList, startBalance, account.currency, showCurrency
-      ));
+      refreshBalance(entryList, startBalance)
+    );
   });
 }
 /*
@@ -238,7 +240,7 @@ matching the currently displayed account
 @param customTxnList: Array - the array of user-modified transactions
 @param account: Object - the account object we are expanding ?
 */
-function expandLedger(accountList, budgetList, customTxnList, account, callback) {
+function expandLedger(accountList, budgetList, customTxnList, account, showCurrency, callback) {
   const currentDate = new Date(account.balanceDate);
   const lastDate = new Date(
     currentDate.getUTCFullYear(),
@@ -247,11 +249,11 @@ function expandLedger(accountList, budgetList, customTxnList, account, callback)
   );
   const returnLedger = budgetList
     .filter(value => (value.fromAccount === parseInt(account.acctID, 10)))
-    .map(value => expandItem(accountList, customTxnList, value, currentDate, lastDate, DEBIT))
+    .map(value => expandItem(accountList, customTxnList, value, currentDate, lastDate, DEBIT, value.currency, showCurrency))
     .concat(
     budgetList
       .filter(value => (value.toAccount === parseInt(account.acctID, 10)))
-      .map(value => expandItem(accountList, customTxnList, value, currentDate, lastDate, CREDIT))
+      .map(value => expandItem(accountList, customTxnList, value, currentDate, lastDate, CREDIT, value.currency, showCurrency))
     )
     .reduce((prev, curr) => prev.concat(curr));
   sortLedger(returnLedger);

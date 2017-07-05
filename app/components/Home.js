@@ -4,7 +4,7 @@ import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops'
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../components/ControlArea';
-import BudgetEditor from '../containers/BudgetEditor';
+import BudgetEditor from '../components/BudgetEditor';
 
 const ipcRenderer = require('electron').ipcRenderer;
 
@@ -21,7 +21,8 @@ const blankBud = {
   periodCount: 1,
   periodType: 'Month',
   totalCount: 0,
-  transactionDate: currentDate.toISOString().split('T')[0]
+  transactionDate: currentDate.toISOString().split('T')[0],
+  currency: 'CAD'
 };
 
 const blankTxn = {
@@ -30,7 +31,8 @@ const blankTxn = {
   Amount: 0,
   Account: 0,
   Custom: false,
-  Description: ''
+  Description: '',
+  currency: 'CAD'
 };
 
 // const exchangeRate = 'http://api.fixer.io/latest?symbols=CAD&base=USD';
@@ -57,9 +59,7 @@ class Main extends React.Component {
     this.showSaveBudget = this.showSaveBudget.bind(this);
     this.editBudgetRow = this.editBudgetRow.bind(this);
     this.handleBudgetChange = this.handleBudgetChange.bind(this);
-    this.requestUpdate = this.requestUpdate.bind(this);
     this.editLedgerRow = this.editLedgerRow.bind(this);
-    this.updateLedger = this.updateLedger.bind(this);
     this.handleLedgerChange = this.handleLedgerChange.bind(this);
     this.refreshLedgerBalance = this.refreshLedgerBalance.bind(this);
     this.changeViewCurrency = this.changeViewCurrency.bind(this);
@@ -188,8 +188,8 @@ class Main extends React.Component {
     console.log(`Main: got ${action} budget event on ${budID}`, event.currentTarget.name);
     if (budID === 'new') {
       console.log('Main:got request to add new budget entry');
-      // set default amounts, skip the 'find
       const newRecord = { ...blankBud };
+      newRecord.currency = this.state.displayCurrency;
       this.setState({ editBud: newRecord });
     }
     if (action === 'enable') {
@@ -206,6 +206,7 @@ class Main extends React.Component {
       newRecord.fromAccount = parseInt(newRecord.fromAccount, 10);
       newRecord.toAccount = parseInt(newRecord.toAccount, 10);
       newRecord.periodCount = parseInt(newRecord.periodCount, 10);
+      newRecord.currency = this.state.displayCurrency;
       if (budID === 'new') {
         console.log(`Main: adding new record with budID ${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`);
         newRecord.budID = `${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`;
@@ -248,7 +249,15 @@ class Main extends React.Component {
     const [txnID, action] = event.currentTarget.name.split('_');
     if (action === 'enable') {
       const { txnDate, Description, Amount } = this.state.data.find(entry => entry.txnID === txnID);
-      this.setState({ editTxn: { txnID, txnDate, Description, Amount } });
+      this.setState({
+        editTxn: {
+          txnID,
+          txnDate,
+          Description,
+          Amount,
+          currency: this.state.account.currency
+        }
+      });
     } else {
       console.log('Home-editLedgerRow: custom ledger ', this.state.customLedgerTable);
       const budgetEntry = this.state.budgetTable
@@ -260,6 +269,7 @@ class Main extends React.Component {
         this.state.customLedgerTable,
         this.state.editTxn,
         this.state.accountIdx,
+        this.state.displayCurrency,
         budgetEntry,
         (err, customLedgerTable) => {
           if (err) {
@@ -316,27 +326,23 @@ class Main extends React.Component {
     }
   }
 
-  requestUpdate() {
-    ipcRenderer.send('update');
-  }
-
-  updateLedger() {
-    ipcRenderer.send('updateLedger');
-  }
-
   render() {
     let visibleBlocks;
-    const displayBalance = convertCurrency(this.state.account.balance, this.state.account.currency, this.state.displayCurrency);
+    const displayBalance = convertCurrency(
+      this.state.account.balance,
+      this.state.account.currency,
+      this.state.displayCurrency
+    );
     const minBalance = Math.min(...this.state.data.map((v) => v.Balance));
     const controlArea = (
       <ControlArea
         accountTable={this.state.accountTable}
         account={this.state.account}
         selectAccount={this.changeAccount}
-        updateBalance={this.requestUpdate}
+        updateBalance={() => ipcRenderer.send('update')}
         editBudget={this.showSaveBudget}
         viewBudget={!this.state.chartMode}
-        updateLedger={this.updateLedger}
+        updateLedger={() => ipcRenderer.send('updateLedger')}
         viewCurr={this.state.displayCurrency}
         changeCurr={this.changeViewCurrency}
       />);
