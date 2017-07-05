@@ -1,6 +1,7 @@
 import React from 'react';
 import { recalculateBalance, convertCurrency } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
+import { makeTickVals } from '../actions/calcaxis';
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../components/ControlArea';
@@ -53,8 +54,11 @@ class Main extends React.Component {
       accountTable: [],
       customLedgerTable: [],
       editTxn: blankTxn,
-      editBud: blankBud
+      editBud: blankBud,
+      tickValData: { zeroPos: 1, tickValues: [] }
     };
+    this.minBalance = 0;
+    this.maxBalance = 0;
     this.changeAccount = this.changeAccount.bind(this);
     this.showSaveBudget = this.showSaveBudget.bind(this);
     this.editBudgetRow = this.editBudgetRow.bind(this);
@@ -115,15 +119,23 @@ class Main extends React.Component {
         if (err) {
           console.error(err);
         } else {
-          this.setState({
-            accountTable: aTable,
-            budgetTable: bTable,
-            customLedgerTable: cTable,
-            account,
-            displayCurrency: currency,
-            data,
-            loadingMessage: 'ready'
-          });
+          this.minBalance = Math.min(...data.map(v => v.Balance));
+          this.maxBalance = Math.max(...data.map(v => v.Balance));
+          makeTickVals(this.minBalance, this.maxBalance, 8)
+            .then(tickValData => {
+              this.setState({
+                accountTable: aTable,
+                budgetTable: bTable,
+                customLedgerTable: cTable,
+                account,
+                displayCurrency: currency,
+                data,
+                tickValData,
+                loadingMessage: 'ready'
+              });
+              return 'OK';
+            })
+            .catch(error => console.error(error));
         }
       });
   }
@@ -333,7 +345,6 @@ class Main extends React.Component {
       this.state.account.currency,
       this.state.displayCurrency
     );
-    const minBalance = Math.min(...this.state.data.map((v) => v.Balance));
     const controlArea = (
       <ControlArea
         accountTable={this.state.accountTable}
@@ -349,10 +360,10 @@ class Main extends React.Component {
     if (this.state.chartMode) {
       visibleBlocks = (
         <div>
-          <ChartArea data={this.state.data} />
+          <ChartArea data={this.state.data} tickValData={this.state.tickValData} />
           <BalanceTable
             balance={displayBalance}
-            minBalance={minBalance}
+            minBalance={this.minBalance}
             currentDate={new Date()}
             ledger={this.state.data}
             editTxn={this.state.editTxn}
