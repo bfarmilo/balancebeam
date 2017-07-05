@@ -124,8 +124,8 @@ class Main extends React.Component {
           this.maxBalance = Math.max(...data.map(v => v.Balance));
           makeTickVals(this.minBalance, this.maxBalance, 8)
             .then(tickValues => {
-              this.maxBalance = Math.max(...tickValues, this.maxBalance);
-              this.minBalance = Math.min(...tickValues, this.minBalance);
+              const maxBal = Math.max(...tickValues, this.maxBalance);
+              const minBal = Math.min(...tickValues, this.minBalance);
               this.setState({
                 accountTable: aTable,
                 budgetTable: bTable,
@@ -135,8 +135,8 @@ class Main extends React.Component {
                 data,
                 tickValues,
                 loadingMessage: 'ready',
-                zeroPos: (this.maxBalance > 0
-                  ? (this.maxBalance - 0) / (this.maxBalance - this.minBalance)
+                zeroPos: (maxBal > 0
+                  ? maxBal / (maxBal - minBal)
                   : 0
                 )
               });
