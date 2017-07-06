@@ -3,8 +3,9 @@ import PropTypes from 'prop-types';
 
 // TODO:
 // 1. Get rid of plus button and make any field clickable to edit
+// 2. Replace Account to/from Numbers with Descriptions
 
-const BudgetEditor = (props) => {
+const AccountEditor = (props) => {
   const newRow = (
     <tr>
       <td><input className="EditLedger" type="text" name={'new_description'} value={props.editBud.description} onChange={props.handleDataChange} /></td>
@@ -119,7 +120,7 @@ const BudgetEditor = (props) => {
 };
 
 
-BudgetEditor.propTypes = {
+AccountEditor.propTypes = {
   accountTable: PropTypes.arrayOf(PropTypes.shape({
     acctID: PropTypes.string.isRequired,
     accountName: PropTypes.string.isRequired,
@@ -135,45 +136,23 @@ BudgetEditor.propTypes = {
       })
     }))
   })).isRequired,
-  accountBudget: PropTypes.arrayOf(PropTypes.shape({
-    budID: PropTypes.string.isRequired,
-    type: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    category: PropTypes.string.isRequired,
-    fromAccount: PropTypes.number.isRequired,
-    toAccount: PropTypes.number.isRequired,
-    amount: PropTypes.number.isRequired,
-    periodCount: PropTypes.number.isRequired,
-    periodType: PropTypes.string.isRequired,
-    totalCount: PropTypes.number.isRequired,
-    transactionDate: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-  })).isRequired,
   handleDataChange: PropTypes.func.isRequired,
-  editBud: PropTypes.shape({
-    budID: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    fromAccount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    toAccount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    amount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    periodCount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    periodType: PropTypes.string.isRequired,
-    transactionDate: PropTypes.string.isRequired,
+  editAcct: PropTypes.shape({
+    acctID: PropTypes.string.isRequired,
+    accountName: PropTypes.string.isRequired,
     currency: PropTypes.string.isRequired,
-  }).isRequired,
-  editEntry: PropTypes.func.isRequired
+    balance: PropTypes.number.isRequired,
+    balanceDate: PropTypes.string.isRequired,
+    includeAccount: PropTypes.bool.isRequired,
+    updateRef: PropTypes.string,
+    updateSequence: PropTypes.arrayOf(PropTypes.shape({
+      N_EVALUATE: PropTypes.shape({
+        selector: PropTypes.string,
+        value: PropTypes.string,
+      })
+    })).isRequired,
+  }).isRequired
+  editAccount: PropTypes.func.isRequired
 };
 
-export default BudgetEditor;
+export default AccountEditor;

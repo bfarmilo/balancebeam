@@ -36,27 +36,48 @@ const blankTxn = {
   currency: 'CAD'
 };
 
+const blankAcct = {
+  acctID: '',
+  accountName: '',
+  currency: 'CAD',
+  balance: 0,
+  balanceDate: '2016-10-28',
+  includeAccount: true,
+  updateRef: '',
+  updateSequence: [
+    {
+      N_EVALUATE: {
+        selector: '',
+        value: '',
+        quantity: '-$1$2',
+        currency: '$3',
+        wait: false
+      }
+    }
+  ]
+};
+
 // const exchangeRate = 'http://api.fixer.io/latest?symbols=CAD&base=USD';
 
 class Main extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      account: {},
-      accountIdx: 1,
-      config: {},
-      displayCurrency: 'CAD',
-      data: [],
-      budget: [],
-      chartMode: true,
-      loadingMessage: 'Loading ...',
       budgetTable: [],
-      accountTable: [],
-      customLedgerTable: [],
-      editTxn: blankTxn,
+      budget: [],
       editBud: blankBud,
+      accountTable: [],
+      accountIdx: 1,
+      account: blankAcct,
+      editAcct: blankAcct,
+      customLedgerTable: [],
+      data: [],
+      editTxn: blankTxn,
+      chartMode: true,
       tickValues: [],
-      zeroPos: 0
+      zeroPos: 0,
+      loadingMessage: 'Loading ...',
+      displayCurrency: 'CAD',
     };
     this.minBalance = 0;
     this.maxBalance = 0;
@@ -71,10 +92,6 @@ class Main extends React.Component {
   }
 
   componentWillMount() {
-    ipcRenderer.on('config', (e, config) => {
-      console.log('Home: received new config', config);
-      this.setState({ config });
-    });
     ipcRenderer.on('accountList', (e, accountTable) => {
       console.log('Home: received new accountList', accountTable);
       const account = accountTable
@@ -148,7 +165,8 @@ class Main extends React.Component {
   }
 
   changeAccount(event) {
-    const accountIdx = parseInt(event.target.value, 10);
+    const accountIdx = parseInt(event.currentTarget.value, 10);
+    console.log('changing account to ', event.currentTarget.value);
     this.setState({ loadingMessage: 'loading new account' }, () => {
       const account = this.state.accountTable
         .find(acct => parseInt(acct.acctID, 10) === accountIdx);
@@ -355,8 +373,13 @@ class Main extends React.Component {
       />);
     if (this.state.chartMode) {
       visibleBlocks = (
-        <div>
-          <ChartArea data={this.state.data} tickValues={this.state.tickValues} zeroPos={this.state.zeroPos} />
+        <div >
+          {controlArea}
+          <ChartArea
+            data={this.state.data}
+            tickValues={this.state.tickValues}
+            zeroPos={this.state.zeroPos}
+          />
           <BalanceTable
             balance={displayBalance}
             minBalance={this.minBalance}
@@ -366,11 +389,12 @@ class Main extends React.Component {
             editEntry={this.editLedgerRow}
             handleDataChange={this.handleLedgerChange}
           />
-        </div>
+        </div >
       );
     } else {
       visibleBlocks = (
-        <div>
+        <div >
+          {controlArea}
           <BudgetEditor
             accountTable={this.state.accountTable}
             accountBudget={this.state.budget}
@@ -378,13 +402,12 @@ class Main extends React.Component {
             editBud={this.state.editBud}
             handleDataChange={this.handleBudgetChange}
           />
-        </div>
+        </div >
       );
     }
 
     return (
       <div>
-        {controlArea}
         {this.state.loadingMessage !== 'ready' ? <div>{this.state.loadingMessage}</div> : visibleBlocks}
       </div>
     );

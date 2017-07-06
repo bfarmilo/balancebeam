@@ -5,18 +5,19 @@ import styles from './ControlArea.css';
 const ControlArea = (props) => (
   <div className="LedgerArea">
     <span className={styles.customdropdown}>
-      <select name="ChooseAcct" id="accountselect" disabled={props.viewBudget} onChange={props.selectAccount}>
+      <select name="ChooseAcct" id="accountselect" disabled={props.viewBudget} onChange={props.selectAccount} value={parseInt(props.account.acctID, 10)}>
         {props.accountTable.reduce((result, val) => {
+          const spaces = new Array(25 - val.accountName.length - val.balance.toString().length).join('\xa0');
           if (val.includeAccount) {
             result.push(
               <option key={val.acctID} value={val.acctID}>
-                {val.accountName}: $ {val.balance}
+                {val.accountName}{spaces}{val.balance < 0 ? '-' : ''}${Math.abs(val.balance)}
               </option>
             );
           } else if (val.balance !== 0) {
             result.push(
-              <option key={val.acctID} disabled value={parseInt(val.acctID, 10)}>
-                {val.accountName}: $ {val.balance}
+              <option key={val.acctID} disabled value={val.acctID}>
+                {val.accountName}{spaces}{val.balance < 0 ? '-' : ''}${Math.abs(val.balance)}
               </option>
             );
           }
@@ -26,9 +27,9 @@ const ControlArea = (props) => (
       </select>
     </span>
     <div className={styles.buttonGroup}>
-      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateBalance}>Update</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateBalance}>{props.account.balanceDate} <i className="fa fa-undo fa-fw" /></button>
       <button type="button" className={styles.toggleButton} onClick={props.editBudget}>{props.viewBudget ? 'View Chart' : 'Edit Budget'}</button>
-      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateLedger}>Refresh</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateLedger}>Refresh Table</button>
       <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.changeCurr}>{props.viewCurr}</button>
     </div>
   </div>

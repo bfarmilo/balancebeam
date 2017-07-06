@@ -143,7 +143,7 @@ const getData = (dataType) => new Promise((resolve, reject) => {
 
 const getAllData = (target) => {
   target.webContents.send('message', 'Loading local data files...');
-  return Promise.all(['config', 'budgetList', 'customLedger', 'accountList'].map(getData));
+  return Promise.all(['budgetList', 'customLedger', 'accountList'].map(getData));
 };
 
 // on startup

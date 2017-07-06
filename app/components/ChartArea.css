@@ -1,0 +1,51 @@
+.chart {
+  stroke: #ccc;
+}
+
+.startpositive {
+  stop-color: rgba(0, 158, 216, 0.35);
+}
+
+.endpositive {
+  stop-color: rgba(0, 158, 216, 0.95);
+}
+
+.startnegative {
+  stop-color: rgba(153, 0, 0, 0.35);
+}
+
+.endnegative {
+  stop-color: rgba(153, 0, 0, 0.95);
+}
+
+
+/*
+.ticklabels {
+  font-size: 7;
+  padding: 5;
+  fill: #fff;
+}
+
+.ticks {
+  size: 0.2;
+}
+
+.grid {
+  fill: transparent;
+  stroke: #ccc;
+  stroke-dasharray: none
+}
+
+.axis {
+  stroke: #ccc;
+}
+
+.data {
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.5;
+}
+
+.tooltip {
+  font-size: 6;
+}
+*/

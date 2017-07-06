@@ -4,10 +4,11 @@
 }
 
 .toggleButton {
+  font-family: 'Consolas';
   display: inline-block;
   -webkit-font-smoothing: antialiased;
   position: relative;
-  padding: .8em;
+  padding: .5em;
   background: #009ED8;
   border: none;
   color: white;
@@ -40,14 +41,19 @@
   background-color: #009ED8;
   color: white;
   font-size: inherit;
-  padding: .8em;
+  padding: .5em;
   padding-right: 2.5em;
   border: 0;
   margin: 1px;
   border-radius: 3px;
+  font-family: 'Consolas';
   text-indent: 0.01px;
   text-overflow: '';
   -webkit-appearance: button; /* hide default arrow in chrome OSX */
+}
+
+.customdropdown select>option {
+  background: #002e3f;
 }
 
 .customdropdown::before,
