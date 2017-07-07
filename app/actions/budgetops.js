@@ -78,7 +78,8 @@ function modifyLedger(action, customLedger, modifiedEntry, account, currency, bu
             toAccount,
             Description: modifiedEntry.Description,
             txnDate: modifiedEntry.txnDate,
-            currency
+            currency,
+            delay: budgetEntry.delay
           };
           console.log(`modifyLedger: looking for entry ${newEntry}`);
           if (customLedger.find(item => item.txnID === newEntry.txnID)) {

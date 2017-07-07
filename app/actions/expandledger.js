@@ -89,10 +89,23 @@ function expandItem(
 
   if (currentAccount.includeAccount) {
     // ^ future, if 'combined' mode is enabled
-    Amount = convertCurrency((isDebit ? -1 * budgetRecord.amount : budgetRecord.amount), fromCurrency, toCurrency);
+    Amount = convertCurrency(
+      (isDebit ? -1 * budgetRecord.amount : budgetRecord.amount),
+      fromCurrency,
+      toCurrency
+    );
     Account = parseInt(currentAccount.acctID, 10);
     Description = budgetRecord.description;
-    const MAX_ITEMS = budgetRecord.totalCount !== 0 ? budgetRecord.totalCount : NUM_MONTHS * 3;
+    const MAX_ITEMS = budgetRecord.totalCount !== 0
+      ? budgetRecord.totalCount
+      : Math.round((NUM_MONTHS / 12) * (periodCounts[budgetRecord.periodType] + 1));
+    let dateOffset = 0;
+    if (!isDebit && Object.hasOwnProperty.call(budgetRecord, 'delay')) dateOffset = budgetRecord.delay;
+    if (dateOffset !== 0) {
+      transactionDate.setUTCDate(
+        transactionDate.getUTCDate() + dateOffset
+      );
+    }
     for (let i = 0;
       i < (periodCounts[budgetRecord.periodType] / budgetRecord.periodCount && MAX_ITEMS);
       i += 1) {
@@ -114,7 +127,14 @@ function expandItem(
       if (transactionDate >= startDate && transactionDate <= endDate) {
         txnID = `${budgetRecord.budID}-${i}`;
         txnDate = transactionDate.toISOString().split('T')[0];
-        currentEntry = { txnID, txnDate, Amount, Account, Description, Custom: false };
+        currentEntry = {
+          txnID,
+          txnDate,
+          Amount,
+          Account,
+          Description,
+          Custom: false
+        };
         returnArray.push(currentEntry);
       }
     }
@@ -123,13 +143,22 @@ function expandItem(
     const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
     if (updated.length > 0) {
       isDebit = (updated[0].fromAccount === Account);
+      const ledgerDate = new Date(updated[0].txnDate);
+      if (Object.hasOwnProperty.call(updated[0], 'delay') && !isDebit) {
+        ledgerDate.setUTCDate(ledgerDate.getUTCDate() + updated[0].delay);
+      }
       const newItem = {
         txnID: updated[0].txnID,
-        txnDate: updated[0].txnDate,
-        Amount: convertCurrency(updated[0].Amount * (isDebit ? -1 : 1), updated[0].currency, toCurrency),
+        txnDate: ledgerDate.toISOString().split('T')[0],
+        Amount: convertCurrency(
+          updated[0].Amount * (isDebit ? -1 : 1),
+          updated[0].currency,
+          toCurrency
+        ),
         Account,
         Description: updated[0].Description,
-        Custom: true
+        Custom: true,
+        delay: item.delay
       };
       result.push(newItem);
     } else {
@@ -249,11 +278,29 @@ function expandLedger(accountList, budgetList, customTxnList, account, showCurre
   );
   const returnLedger = budgetList
     .filter(value => (value.fromAccount === parseInt(account.acctID, 10)))
-    .map(value => expandItem(accountList, customTxnList, value, currentDate, lastDate, DEBIT, value.currency, showCurrency))
+    .map(value => expandItem(
+      accountList,
+      customTxnList,
+      value,
+      currentDate,
+      lastDate,
+      DEBIT,
+      value.currency,
+      showCurrency)
+    )
     .concat(
     budgetList
       .filter(value => (value.toAccount === parseInt(account.acctID, 10)))
-      .map(value => expandItem(accountList, customTxnList, value, currentDate, lastDate, CREDIT, value.currency, showCurrency))
+      .map(value => expandItem(
+        accountList,
+        customTxnList,
+        value,
+        currentDate,
+        lastDate,
+        CREDIT,
+        value.currency,
+        showCurrency)
+      )
     )
     .reduce((prev, curr) => prev.concat(curr));
   sortLedger(returnLedger);

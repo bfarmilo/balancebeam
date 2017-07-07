@@ -9,6 +9,7 @@ const BudgetEditor = (props) => {
     <tr>
       <td><input className="EditLedger" type="text" name={'new_description'} value={props.editBud.description} onChange={props.handleDataChange} /></td>
       <td><input className="EditLedger Currency input-small" type="number" name={'new_amount'} value={props.editBud.amount} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-small" type="text" name={'new_currency'} value={props.editBud.currency} onChange={props.handleDataChange} /></td>
       <td>
         <select className="EditLedger input-medium" name={'new_fromAccount'} value={parseInt(props.editBud.fromAccount, 10)} onChange={props.handleDataChange}>
           {props.accountTable.map(account => (
@@ -43,9 +44,9 @@ const BudgetEditor = (props) => {
           <tr>
             <th>Description</th>
             <th>Amount</th>
+            <th>Currency</th>
             <th>From</th>
             <th>To</th>
-            <th />
             <th />
             <th />
             <th>Start</th>
@@ -54,6 +55,7 @@ const BudgetEditor = (props) => {
         </thead>
         <tbody>
           {props.accountBudget.map(val => {
+            let currencyCell = <td>{val.currency}</td>;
             let discCell = <td>{val.description}</td>;
             let fromCell = <td className="Account">{props.accountTable[val.fromAccount].includeAccount ? props.accountTable[val.fromAccount].accountName : ''}</td>;
             let toCell = <td className="Account">{props.accountTable[val.toAccount].includeAccount ? props.accountTable[val.toAccount].accountName : ''}</td>;
@@ -64,6 +66,7 @@ const BudgetEditor = (props) => {
             let buttonCell = props.editBud.budID !== '' ? <button disabled>x</button> : <button name={`${val.budID}_enable`} id={val.budID} type="button" onClick={props.editEntry}>+</button>;
             let resetButton = '';
             if (props.editBud.budID === val.budID) {
+              currencyCell = <td><input className="EditLedger input-tiny" type="text" name={`${val.budID}_currency`} value={props.editBud.currency} onChange={props.handleDataChange} /></td>;
               dateCell = <td><input className="EditLedger input-large" type="date" name={`${val.budID}_transactionDate`} value={props.editBud.transactionDate} onChange={props.handleDataChange} /></td>;
               discCell = <td><input className="EditLedger" type="text" name={`${val.budID}_description`} value={props.editBud.description} onChange={props.handleDataChange} /></td>;
               amountCell = <td><input className="EditLedger Currency input-small" type="number" name={`${val.budID}_amount`} value={props.editBud.amount} onChange={props.handleDataChange} /></td>;
@@ -100,6 +103,7 @@ const BudgetEditor = (props) => {
               <tr key={val.budID} id={`row-${val.budID}`}>
                 {discCell}
                 {amountCell}
+                {currencyCell}
                 {fromCell}
                 {toCell}
                 <td>every</td>

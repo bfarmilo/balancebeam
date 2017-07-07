@@ -6,6 +6,7 @@ import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../components/ControlArea';
 import BudgetEditor from '../components/BudgetEditor';
+import AccountEditor from '../components/AccountEditor';
 
 const ipcRenderer = require('electron').ipcRenderer;
 
@@ -23,7 +24,8 @@ const blankBud = {
   periodType: 'Month',
   totalCount: 0,
   transactionDate: currentDate.toISOString().split('T')[0],
-  currency: 'CAD'
+  currency: 'CAD',
+  delay: 0
 };
 
 const blankTxn = {
@@ -33,7 +35,8 @@ const blankTxn = {
   Account: 0,
   Custom: false,
   Description: '',
-  currency: 'CAD'
+  currency: 'CAD',
+  delay: 0
 };
 
 const blankAcct = {
@@ -41,7 +44,7 @@ const blankAcct = {
   accountName: '',
   currency: 'CAD',
   balance: 0,
-  balanceDate: '2016-10-28',
+  balanceDate: currentDate.toISOString().split('T')[0],
   includeAccount: true,
   updateRef: '',
   updateSequence: [
@@ -68,12 +71,13 @@ class Main extends React.Component {
       editBud: blankBud,
       accountTable: [],
       accountIdx: 1,
-      account: blankAcct,
+      account: {},
       editAcct: blankAcct,
       customLedgerTable: [],
       data: [],
       editTxn: blankTxn,
       chartMode: true,
+      accountMode: false,
       tickValues: [],
       zeroPos: 0,
       loadingMessage: 'Loading ...',
@@ -89,6 +93,9 @@ class Main extends React.Component {
     this.handleLedgerChange = this.handleLedgerChange.bind(this);
     this.refreshLedgerBalance = this.refreshLedgerBalance.bind(this);
     this.changeViewCurrency = this.changeViewCurrency.bind(this);
+    this.editAccountRow = this.editAccountRow.bind(this);
+    this.handleAccountDataChange = this.handleAccountDataChange.bind(this);
+    this.viewAccounts = this.viewAccounts.bind(this);
   }
 
   componentWillMount() {
@@ -205,6 +212,14 @@ class Main extends React.Component {
     }
   }
 
+  handleAccountDataChange(event) {
+    const [acctID, dataType] = event.target.name.split('_');
+    const editAcct = { ...this.state.editAcct };
+    console.log('account change detected on', acctID, dataType);
+    editAcct[dataType] = event.target.value;
+    this.setState({ editAcct });
+  }
+
   handleLedgerChange(event) {
     const dataType = event.target.name.split('_')[1];
     const editTxn = { ...this.state.editTxn };
@@ -244,6 +259,7 @@ class Main extends React.Component {
       newRecord.toAccount = parseInt(newRecord.toAccount, 10);
       newRecord.periodCount = parseInt(newRecord.periodCount, 10);
       newRecord.currency = this.state.displayCurrency;
+      newRecord.delay = parseInt(newRecord.delay, 10);
       if (budID === 'new') {
         console.log(`Main: adding new record with budID ${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`);
         newRecord.budID = `${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`;
@@ -270,7 +286,7 @@ class Main extends React.Component {
             updatedList,
             this.state.customLedgerTable,
             this.state.account,
-            this.state.currency,
+            this.state.displayCurrency,
             this.state.data
           );
           this.setState({
@@ -336,6 +352,10 @@ class Main extends React.Component {
     }
   }
 
+  editAccountRow(event) {
+
+  }
+
   toggleShowBudget() {
     if (!this.state.chartMode) {
       console.log('Home-toggleShowBudget: switching to chart mode');
@@ -349,6 +369,14 @@ class Main extends React.Component {
           this.setState({ budget, chartMode: false });
         }
       });
+    }
+  }
+
+  viewAccounts() {
+    if (!this.state.accountMode) {
+      this.setState({ accountMode: true, editAcct: blankAcct });
+    } else {
+      this.setState({ accountMode: false });
     }
   }
 
@@ -367,11 +395,28 @@ class Main extends React.Component {
         updateBalance={() => ipcRenderer.send('update')}
         editBudget={this.toggleShowBudget}
         viewBudget={!this.state.chartMode}
-        updateLedger={() => ipcRenderer.send('updateLedger')}
+        updateLedger={this.viewAccounts} // () => ipcRenderer.send('updateLedger')
         viewCurr={this.state.displayCurrency}
         changeCurr={this.changeViewCurrency}
-      />);
-    if (this.state.chartMode) {
+        viewAccount={this.state.accountMode}
+      />
+    );
+    const accountArea = (
+      <AccountEditor
+        accountTable={this.state.accountTable}
+        editAcct={this.state.editAcct}
+        handleDataChange={this.handleAccountDataChange}
+        editEntry={this.editAccountRow}
+      />
+    );
+    if (this.state.accountMode) {
+      visibleBlocks = (
+        <div>
+          {controlArea}
+          {accountArea}
+        </div>
+      );
+    } else if (this.state.chartMode) {
       visibleBlocks = (
         <div >
           {controlArea}
@@ -405,7 +450,6 @@ class Main extends React.Component {
         </div >
       );
     }
-
     return (
       <div>
         {this.state.loadingMessage !== 'ready' ? <div>{this.state.loadingMessage}</div> : visibleBlocks}

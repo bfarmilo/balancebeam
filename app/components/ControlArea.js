@@ -27,10 +27,10 @@ const ControlArea = (props) => (
       </select>
     </span>
     <div className={styles.buttonGroup}>
-      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateBalance}>{props.account.balanceDate} <i className="fa fa-undo fa-fw" /></button>
-      <button type="button" className={styles.toggleButton} onClick={props.editBudget}>{props.viewBudget ? 'View Chart' : 'Edit Budget'}</button>
-      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateLedger}>Refresh Table</button>
-      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.changeCurr}>{props.viewCurr}</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount} onClick={props.updateBalance}>{props.account.balanceDate} <i className="fa fa-undo fa-fw" /></button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewAccount} onClick={props.editBudget}>{props.viewBudget ? 'View Chart' : 'Edit Budget'}</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateLedger}>Edit Accounts</button>
+      <button type="button" className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount} onClick={props.changeCurr}>{props.viewCurr}</button>
     </div>
   </div>
 );
@@ -72,7 +72,8 @@ ControlArea.propTypes = {
   viewBudget: PropTypes.bool.isRequired,
   updateLedger: PropTypes.func.isRequired,
   changeCurr: PropTypes.func.isRequired,
-  viewCurr: PropTypes.string.isRequired
+  viewCurr: PropTypes.string.isRequired,
+  viewAccount: PropTypes.bool.isRequired
 };
 
 export default ControlArea;
