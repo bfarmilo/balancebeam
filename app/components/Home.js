@@ -25,7 +25,8 @@ const blankBud = {
   totalCount: 0,
   transactionDate: currentDate.toISOString().split('T')[0],
   currency: 'CAD',
-  delay: 0
+  delay: 0,
+  rate: 0
 };
 
 const blankTxn = {
@@ -46,6 +47,8 @@ const blankAcct = {
   balance: 0,
   balanceDate: currentDate.toISOString().split('T')[0],
   includeAccount: true,
+  accountType: 'loan',
+  rate: 0,
   updateRef: '',
   updateSequence: [
     {
@@ -82,6 +85,7 @@ class Main extends React.Component {
       zeroPos: 0,
       loadingMessage: 'Loading ...',
       displayCurrency: 'CAD',
+      displayBalance: 0
     };
     this.minBalance = 0;
     this.maxBalance = 0;
@@ -128,6 +132,13 @@ class Main extends React.Component {
         this.state.displayCurrency,
         this.state.data
       );
+      this.setState({
+        displayBalance: convertCurrency(
+          this.state.account.balance || 0,
+          this.state.account.currency || 'CAD',
+          this.state.displayCurrency || 'CAD'
+        )
+      });
     });
   }
 
@@ -382,11 +393,6 @@ class Main extends React.Component {
 
   render() {
     let visibleBlocks;
-    const displayBalance = convertCurrency(
-      this.state.account.balance,
-      this.state.account.currency,
-      this.state.displayCurrency
-    );
     const controlArea = (
       <ControlArea
         accountTable={this.state.accountTable}
@@ -426,7 +432,7 @@ class Main extends React.Component {
             zeroPos={this.state.zeroPos}
           />
           <BalanceTable
-            balance={displayBalance}
+            balance={this.state.displayBalance}
             minBalance={this.minBalance}
             currentDate={new Date()}
             ledger={this.state.data}

@@ -1,11 +1,17 @@
+// @flow
+
 import React from 'react';
-import PropTypes from 'prop-types';
+import type { accountItem } from '../actions/typedefs';
 
 // TODO:
 // 1. Get rid of plus button and make any field clickable to edit
-// 2. Replace Account to/from Numbers with accountNames
 
-const AccountEditor = (props) => {
+const AccountEditor = (props: {
+  accountTable: Array<accountItem>,
+  editAcct: accountItem,
+  handleDataChange: (() => Event),
+  editEntry: (() => Event)
+}) => {
   const newRow = (
     <tr>
       <td><input className="EditLedger input-large" type="text" name={'new_accountName'} value={props.editAcct.accountName} onChange={props.handleDataChange} /></td>
@@ -25,7 +31,9 @@ const AccountEditor = (props) => {
             <th>Balance</th>
             <th>Balance Date</th>
             <th>Currency</th>
-            <th>Show in List?</th>
+            <th>Account Type</th>
+            <th>Annual Rate</th>
+            <th>Show?</th>
             <th />
           </tr>
         </thead>
@@ -33,7 +41,9 @@ const AccountEditor = (props) => {
           {props.accountTable.map(val => {
             let nameCell = <td>{val.accountName}</td>;
             let dateCell = <td>{val.balanceDate}</td>;
-            let balanceCell = <td className="Currency">${val.balance}</td>;
+            let balanceCell = <td className={val.balance < 0 ? 'Currency Negative' : 'Currency'}>{val.balance < 0 ? '-' : ''}${Math.abs(val.balance)}</td>;
+            let typeCell = <td>{val.accountType}</td>;
+            let rateCell = val.accountType === 'loan' ? <td>{Math.round(val.rate * 10000) / 100}%</td> : <td />;
             let currencyCell = <td>{val.currency}</td>;
             let showCell = <td><i className={val.includeAccount ? 'fa fa-check' : 'fa fa-uncheck'} /></td>;
             let buttonCell = props.editAcct.acctID !== '' ? <button disabled>x</button> : <button name={`${val.acctID}_enable`} id={val.acctID} type="button" onClick={props.editEntry}>+</button>;
@@ -43,6 +53,8 @@ const AccountEditor = (props) => {
               nameCell = <td><input className="EditLedger" type="text" name={`${val.acctID}_accountName`} value={props.editAcct.accountName} onChange={props.handleDataChange} /></td>;
               balanceCell = <td><input className="EditLedger Currency" type="number" name={`${val.acctID}_balance`} value={props.editAcct.balance} onChange={props.handleDataChange} /></td>;
               currencyCell = <td><input className="EditLedger" type="text" name={`${val.acctID}_currency`} value={props.editAcct.currency} onChange={props.handleDataChange} /></td>;
+              typeCell = <td><input className="EditLedger" type="text" name={`${val.acctID}_accountType`} value={props.editAcct.accountType} onChange={props.handleDataChange} /></td>;
+              rateCell = <td><input className="EditLedger" disabled={val.accountType === 'loan'} type="number" name={`${val.acctID}_rate`} value={val.accountType === 'loan' ? 0 : props.editAcct.rate} onChange={props.handleDataChange} /></td>;
               showCell = <td><input name={`${val.acctID}_includeAccount`} type="checkbox" value={props.editAcct.includeAccount} onChange={props.handleDataChange} /></td>;
               buttonCell = <button name={`${val.acctID}_modify`} type="button" onClick={props.editEntry}><i id="modify" className="fa fa-check fa-fw" aria-hidden="true" /></button>;
               resetButton = <button name={`${val.acctID}_clear`} id="clear" type="button" onClick={props.editEntry}><i id="clear" className="fa fa-undo fa-fw" aria-hidden="true" /></button>;
@@ -53,6 +65,8 @@ const AccountEditor = (props) => {
                 {balanceCell}
                 {dateCell}
                 {currencyCell}
+                {typeCell}
+                {rateCell}
                 {showCell}
                 <td className="EditBox">
                   {buttonCell}{resetButton}
@@ -64,42 +78,6 @@ const AccountEditor = (props) => {
       </table>
     </div>
   );
-};
-
-
-AccountEditor.propTypes = {
-  accountTable: PropTypes.arrayOf(PropTypes.shape({
-    acctID: PropTypes.string.isRequired,
-    accountName: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-    balance: PropTypes.number.isRequired,
-    balanceDate: PropTypes.string.isRequired,
-    includeAccount: PropTypes.bool.isRequired,
-    updateRef: PropTypes.string,
-    updateSequence: PropTypes.arrayOf(PropTypes.shape({
-      N_EVALUATE: PropTypes.shape({
-        selector: PropTypes.string,
-        value: PropTypes.string,
-      })
-    }))
-  })).isRequired,
-  handleDataChange: PropTypes.func.isRequired,
-  editAcct: PropTypes.shape({
-    acctID: PropTypes.string.isRequired,
-    accountName: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-    balance: PropTypes.number.isRequired,
-    balanceDate: PropTypes.string.isRequired,
-    includeAccount: PropTypes.bool.isRequired,
-    updateRef: PropTypes.string,
-    updateSequence: PropTypes.arrayOf(PropTypes.shape({
-      N_EVALUATE: PropTypes.shape({
-        selector: PropTypes.string,
-        value: PropTypes.string,
-      })
-    })).isRequired,
-  }).isRequired,
-  editEntry: PropTypes.func.isRequired,
 };
 
 export default AccountEditor;

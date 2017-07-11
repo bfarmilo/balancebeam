@@ -1,5 +1,7 @@
 // @flow
 
+import type { ledgerItem, accountItem, budgetItem, customLedgerItem } from './typedefs';
+
 const periodCounts = {
   Year: 1,
   Month: 12,
@@ -7,13 +9,6 @@ const periodCounts = {
 };
 const exchangeRates = {
   USD: 1.26
-};
-
-type ledgerItem = {
-  txnID: string,
-  txnDate: string,
-  Description: string,
-  Amount: number
 };
 
 const USDCAD = exchangeRates.USD;
@@ -48,13 +43,15 @@ returns a ledger (array)
 */
 
 /*
-expandItem takes a budget record and expands it out based on the frequency of repitition.
+expandItem takes a budget record and expands it out based on the frequency of repetition.
 
 @param accountList:Array - an array of Account objects
 @param budgetRecord:Object - the current budget Record we are expanding
 @param startDate:String - the starting date for the ledger
 @param endDate:String - the ending date for the ledger
 @param debitCredit:String - 'DEBIT' or 'CREDIT'
+@param fromCurrency:String - 'CAD' or 'USD', the native currency of the account
+@param toCurrency: String - 'CAD' or 'USD', the currency to be displayed
 
 */
 function expandItem(
@@ -66,7 +63,7 @@ function expandItem(
   debitCredit,
   fromCurrency,
   toCurrency
-): Array<ledgerItem> {
+): Array<ledgerItem | customLedgerItem> {
   // creates a transaction ID txnID of the form 'budID-i'
   // where i is the expanded count (0 is the one matching the start date)
   const returnArray = [];
@@ -75,7 +72,8 @@ function expandItem(
   let Account = 0;
   let Description = '';
   let txnID = '';
-  let currentEntry = { txnID, txnDate, Amount, Account, Description };
+  const rate = budgetRecord.type !== 'Interest' ? 0 : budgetRecord.rate;
+  let currentEntry = { txnID, txnDate, Amount, Account, Description, rate };
   const transactionDate = new Date(budgetRecord.transactionDate);
 
   let isDebit = (debitCredit === DEBIT);
@@ -86,6 +84,7 @@ function expandItem(
     accountList
       .filter(value => (parseInt(value.acctID, 10) === accountIdx))
       .reduce(val => val);
+
 
   if (currentAccount.includeAccount) {
     // ^ future, if 'combined' mode is enabled
@@ -133,39 +132,42 @@ function expandItem(
           Amount,
           Account,
           Description,
-          Custom: false
+          Custom: false,
+          rate
         };
         returnArray.push(currentEntry);
       }
     }
   }// now look for matching custom transactions and replace in the ledger table
-  return returnArray.reduce((result, item) => {
-    const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
-    if (updated.length > 0) {
-      isDebit = (updated[0].fromAccount === Account);
-      const ledgerDate = new Date(updated[0].txnDate);
-      if (Object.hasOwnProperty.call(updated[0], 'delay') && !isDebit) {
-        ledgerDate.setUTCDate(ledgerDate.getUTCDate() + updated[0].delay);
+  return returnArray.reduce(
+    (result: Array<ledgerItem | customLedgerItem | null>, item: ledgerItem) => {
+      const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
+      if (updated.length > 0) {
+        isDebit = (updated[0].fromAccount === Account);
+        const ledgerDate = new Date(updated[0].txnDate);
+        if (Object.hasOwnProperty.call(updated[0], 'delay') && !isDebit) {
+          ledgerDate.setUTCDate(ledgerDate.getUTCDate() + updated[0].delay);
+        }
+        const newItem: ledgerItem = {
+          txnID: updated[0].txnID,
+          txnDate: ledgerDate.toISOString().split('T')[0],
+          Amount: convertCurrency(
+            updated[0].Amount * (isDebit ? -1 : 1),
+            updated[0].currency,
+            toCurrency
+          ),
+          Account,
+          Description: updated[0].Description,
+          Custom: true,
+          delay: item.delay,
+          rate: 0
+        };
+        result.push(newItem);
+      } else {
+        result.push(item);
       }
-      const newItem = {
-        txnID: updated[0].txnID,
-        txnDate: ledgerDate.toISOString().split('T')[0],
-        Amount: convertCurrency(
-          updated[0].Amount * (isDebit ? -1 : 1),
-          updated[0].currency,
-          toCurrency
-        ),
-        Account,
-        Description: updated[0].Description,
-        Custom: true,
-        delay: item.delay
-      };
-      result.push(newItem);
-    } else {
-      result.push(item);
-    }
-    return result;
-  }, []);
+      return result;
+    }, []);
 }
 /*
 convertCurrency converts from the account currency
@@ -175,7 +177,7 @@ to the specified output currency
 @param fromCurrency:String 'CAD' or 'USD' the starting currency
 @param toCurrency:String 'CAD' or 'USD' the output currency
 */
-function convertCurrency(amount, fromCurrency, toCurrency) {
+function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
   let convertAmount = 0;
   if (fromCurrency === toCurrency) {
     convertAmount = Math.round(amount * 100) / 100;
@@ -194,16 +196,15 @@ refreshBalance recalculates the running balance of the ledger
 
 @param ledgerList:Array of ledger objects
 @param startBalance:Float the starting balance of the account
-@param fromCurr:String 'CAD' or 'USD', the native currencty of the account
-@param toCurr:String 'CAD' or 'USD' the output currency to calculate to
+
 */
-function refreshBalance(ledgerList, startBalance) {
+function refreshBalance(ledgerList: Array<ledgerItem>, startBalance: number): Array<ledgerItem> {
   let runningBalance = startBalance;
   return ledgerList.map(entry => {
-    const result = entry;
-    result.Amount = entry.Amount;
+    const result = { ...entry };
+    result.Amount = entry.rate !== 0 ? runningBalance * entry.rate : entry.Amount;
     result.Balance = Math.round((runningBalance + entry.Amount) * 100) / 100;
-    runningBalance = entry.Balance;
+    runningBalance = result.Balance;
     return result;
   });
 }
@@ -212,7 +213,7 @@ sortLedger sorts a ledger in place
 
 @param ledger:Array of ledger objects
 */
-function sortLedger(ledger) {
+function sortLedger(ledger: Array<ledgerItem>): void {
   ledger.sort((a, b) => {
     if (Date.parse(a.txnDate) === Date.parse(b.txnDate)) {
       return b.Amount - a.Amount;
@@ -234,14 +235,14 @@ an existing ledger (refreshData <> []) or can create a ledger with balances.
 */
 
 function recalculateBalance(
-  accountList,
-  budgetList,
-  customTxnList,
-  account,
-  showCurrency,
-  refreshData,
-  callback
-) {
+  accountList: Array<accountItem>,
+  budgetList: Array<budgetItem>,
+  customTxnList: Array<ledgerItem>,
+  account: accountItem,
+  showCurrency: string,
+  refreshData: Array<ledgerItem>,
+  callback: (err: Error | null, data: Array<ledgerItem> | null) => void
+): void {
   let startBalance = 0;
   let entryList = [];
   startBalance = convertCurrency(account.balance, account.currency, showCurrency);
@@ -252,7 +253,7 @@ function recalculateBalance(
     return callback(null, returnData);
   }
   expandLedger(accountList, budgetList, customTxnList, account, showCurrency, (e, data) => {
-    if (e) return callback(e);
+    if (e) return callback(e, null);
     entryList = data;
     return callback(
       null,
@@ -267,7 +268,9 @@ matching the currently displayed account
 @param accountList:Array - an array of account Objects
 @param budgetList: Array - the array of budgetList Objects
 @param customTxnList: Array - the array of user-modified transactions
-@param account: Object - the account object we are expanding ?
+@param account: Object - the account object we are expanding
+@showCurrency:String - 'USD' or 'CAD' the currency we want to display
+
 */
 function expandLedger(accountList, budgetList, customTxnList, account, showCurrency, callback) {
   const currentDate = new Date(account.balanceDate);

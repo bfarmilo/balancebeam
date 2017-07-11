@@ -1,8 +1,21 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import styles from './ControlArea.css';
+// @flow
 
-const ControlArea = (props) => (
+import React from 'react';
+import styles from './ControlArea.css';
+import type { accountList } from '../actions/typedefs';
+
+const ControlArea = (props: {
+  accountTable: Array<accountList>,
+  account: accountList,
+  selectAccount: (()=> Event),
+  updateBalance: (()=> Event),
+  editBudget: (()=> Event),
+  viewBudget: boolean,
+  updateLedger: (()=> Event),
+  changeCurr: (()=> Event),
+  viewCurr: string,
+  viewAccount: boolean
+}) => (
   <div className="LedgerArea">
     <span className={styles.customdropdown}>
       <select name="ChooseAcct" id="accountselect" disabled={props.viewBudget} onChange={props.selectAccount} value={parseInt(props.account.acctID, 10)}>
@@ -34,46 +47,5 @@ const ControlArea = (props) => (
     </div>
   </div>
 );
-
-ControlArea.propTypes = {
-  accountTable: PropTypes.arrayOf(PropTypes.shape({
-    acctID: PropTypes.string,
-    accountName: PropTypes.string,
-    currency: PropTypes.string,
-    balance: PropTypes.number,
-    balanceDate: PropTypes.string,
-    includeAccount: PropTypes.bool,
-    updateRef: PropTypes.string,
-    updateSequence: PropTypes.arrayOf(PropTypes.shape({
-      N_EVALUATE: PropTypes.shape({
-        selector: PropTypes.string,
-        value: PropTypes.string,
-      })
-    }))
-  })).isRequired,
-  account: PropTypes.shape({
-    acctID: PropTypes.string.isRequired,
-    accountName: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-    balance: PropTypes.number.isRequired,
-    balanceDate: PropTypes.string.isRequired,
-    includeAccount: PropTypes.bool.isRequired,
-    updateRef: PropTypes.string,
-    updateSequence: PropTypes.arrayOf(PropTypes.shape({
-      N_EVALUATE: PropTypes.shape({
-        selector: PropTypes.string,
-        value: PropTypes.string,
-      })
-    }))
-  }).isRequired,
-  selectAccount: PropTypes.func.isRequired,
-  updateBalance: PropTypes.func.isRequired,
-  editBudget: PropTypes.func.isRequired,
-  viewBudget: PropTypes.bool.isRequired,
-  updateLedger: PropTypes.func.isRequired,
-  changeCurr: PropTypes.func.isRequired,
-  viewCurr: PropTypes.string.isRequired,
-  viewAccount: PropTypes.bool.isRequired
-};
 
 export default ControlArea;

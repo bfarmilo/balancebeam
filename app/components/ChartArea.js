@@ -1,9 +1,15 @@
+// @flow
+
 import React from 'react';
-import PropTypes from 'prop-types';
 import { VictoryLine, VictoryChart, VictoryAxis, VictoryTheme, VictoryVoronoiContainer, VictoryTooltip } from 'victory';
 import styles from './ChartArea.css';
+import type { ledgerItem } from '../actions/typedefs';
 
-const ChartArea = (props) => {
+const ChartArea = (props: {
+  data: Array<ledgerItem>,
+  tickValues: Array<number>,
+  zeroPos: number
+}) => {
   const posHeight = Math.round(props.zeroPos * 100);
   const mainaxis = {
     tickLabels: { fontSize: 7, padding: 5, fill: '#fff' },
@@ -32,8 +38,8 @@ const ChartArea = (props) => {
           </linearGradient>
         </defs>
         <rect x="50" y="50" width="250" height="100" fill="white" />
-        <rect x="50" y="50" width="250" height={posHeight} fill="url(#chartarea)" />
-        <rect x="50" y={50 + posHeight} width="250" height={100 - posHeight} fill="url(#negarea)" />
+        <rect x="50" y="50" width="250" height={Math.min(posHeight, 100)} fill="url(#chartarea)" />
+        <rect x="50" y={50 + posHeight} width="250" height={Math.max(100 - posHeight, 0)} fill="url(#negarea)" />
         <VictoryChart
           containerComponent={<VictoryVoronoiContainer />}
           height={200}
@@ -53,7 +59,8 @@ const ChartArea = (props) => {
             style={mainaxis}
             tickValues={props.tickValues}
             tickFormat={(y) => {
-              if (Math.max(...props.data.map(v => v.Balance)) > 2000 || Math.min(...props.data.map(v => v.Balance)) < -2000) {
+              if (Math.max(...props.data.map(v => v.Balance)) > 2000
+                || Math.min(...props.data.map(v => v.Balance)) < -2000) {
                 let returnY = `${y < 0 ? '-' : ''}$${Math.abs(y) / 1000}k`;
                 returnY = y === 0 ? '$0' : returnY;
                 return returnY;
@@ -78,20 +85,5 @@ const ChartArea = (props) => {
     </div >
   );
 };
-
-
-ChartArea.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.shape({
-    txnID: PropTypes.string,
-    txnDate: PropTypes.string,
-    Amount: PropTypes.number,
-    Account: PropTypes.number,
-    Description: PropTypes.string,
-    Balance: PropTypes.number
-  })).isRequired,
-  tickValues: PropTypes.arrayOf(PropTypes.number).isRequired,
-  zeroPos: PropTypes.number.isRequired
-};
-
 
 export default ChartArea;

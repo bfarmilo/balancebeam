@@ -1,7 +1,17 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+// @flow
 
-const BalanceTable = (props) => (
+import React from 'react';
+import type { ledgerItem } from '../actions/typedefs';
+
+const BalanceTable = (props: {
+  ledger: Array<ledgerItem>,
+  editTxn: ledgerItem,
+  minBalance: number,
+  balance: number,
+  currentDate: Date,
+  handleDataChange: (() => Event),
+  editEntry: (() => Event)
+}) => (
   <div className="LedgerArea">
     <table className="Ledger">
       <thead>
@@ -50,31 +60,6 @@ const BalanceTable = (props) => (
     </table>
   </div>
 );
-
-BalanceTable.propTypes = {
-  balance: PropTypes.number.isRequired,
-  minBalance: PropTypes.number.isRequired,
-  currentDate: PropTypes.instanceOf(Date).isRequired,
-  ledger: PropTypes.arrayOf(PropTypes.shape({
-    txnID: PropTypes.string,
-    txnDate: PropTypes.string,
-    Amount: PropTypes.number,
-    Account: PropTypes.number,
-    Description: PropTypes.string
-  })).isRequired,
-  editTxn: PropTypes.shape({
-    txnID: PropTypes.string,
-    txnDate: PropTypes.string,
-    Amount: PropTypes.oneOfType([
-      PropTypes.number,
-      PropTypes.string
-    ]),
-    Account: PropTypes.number,
-    Description: PropTypes.string
-  }).isRequired,
-  editEntry: PropTypes.func.isRequired,
-  handleDataChange: PropTypes.func.isRequired
-};
 
 // need three options:
 // activate edit mode for current row (or new)

@@ -1,10 +1,44 @@
+// @flow
+
 import React from 'react';
-import PropTypes from 'prop-types';
+import type { budgetItem, accountItem } from '../actions/typedefs';
 
 // TODO:
 // 1. Get rid of plus button and make any field clickable to edit
 
-const BudgetEditor = (props) => {
+const BudgetEditor = (props: {
+  accountTable: Array<accountItem>,
+  accountBudget: Array<budgetItem>,
+  editBud: budgetItem,
+  handleDataChange: (() => Event),
+  editEntry: (() => Event)
+}) => {
+  const advanced = (
+    <tr>
+      <th>Type</th>
+      <th>Delay</th>
+      <th>Count</th>
+      <th>Category</th>
+      <th>Int. %</th>
+      <th />
+      <th />
+      <th />
+      <th />
+    </tr>
+  );
+  const advanceEntry = (
+    <tr>
+      <td><input className="EditLedger" type="text" name={`${props.editBud.budID}_type`} value={props.editBud.type} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-small" type="number" name={`${props.editBud.budID}_delay`} value={props.editBud.delay} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-small" type="number" name={`${props.editBud.budID}_totalCount`} value={props.editBud.totalCount} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-medium" type="text" name={`${props.editBud.budID}_category`} value={props.editBud.category} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-medium" type="number" name={`${props.editBud.budID}_rate`} value={props.editBud.rate} onChange={props.handleDataChange} /></td>
+      <td />
+      <td />
+      <td />
+      <td />
+    </tr>
+  );
   const newRow = (
     <tr>
       <td><input className="EditLedger" type="text" name={'new_description'} value={props.editBud.description} onChange={props.handleDataChange} /></td>
@@ -115,69 +149,14 @@ const BudgetEditor = (props) => {
                 </td>
               </tr>);
           })}
+          <tr />
           {props.editBud.budID !== '' ? <tr /> : newRow}
+          {advanced}
+          {advanceEntry}
         </tbody>
       </table>
     </div>
   );
-};
-
-
-BudgetEditor.propTypes = {
-  accountTable: PropTypes.arrayOf(PropTypes.shape({
-    acctID: PropTypes.string.isRequired,
-    accountName: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-    balance: PropTypes.number.isRequired,
-    balanceDate: PropTypes.string.isRequired,
-    includeAccount: PropTypes.bool.isRequired,
-    updateRef: PropTypes.string,
-    updateSequence: PropTypes.arrayOf(PropTypes.shape({
-      N_EVALUATE: PropTypes.shape({
-        selector: PropTypes.string,
-        value: PropTypes.string,
-      })
-    }))
-  })).isRequired,
-  accountBudget: PropTypes.arrayOf(PropTypes.shape({
-    budID: PropTypes.string.isRequired,
-    type: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    category: PropTypes.string.isRequired,
-    fromAccount: PropTypes.number.isRequired,
-    toAccount: PropTypes.number.isRequired,
-    amount: PropTypes.number.isRequired,
-    periodCount: PropTypes.number.isRequired,
-    periodType: PropTypes.string.isRequired,
-    totalCount: PropTypes.number.isRequired,
-    transactionDate: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-  })).isRequired,
-  handleDataChange: PropTypes.func.isRequired,
-  editBud: PropTypes.shape({
-    budID: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    fromAccount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    toAccount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    amount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    periodCount: PropTypes.oneOfType([
-      PropTypes.number.isRequired,
-      PropTypes.string.isRequired
-    ]),
-    periodType: PropTypes.string.isRequired,
-    transactionDate: PropTypes.string.isRequired,
-    currency: PropTypes.string.isRequired,
-  }).isRequired,
-  editEntry: PropTypes.func.isRequired
 };
 
 export default BudgetEditor;
