@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { budgetItem, accountItem } from '../actions/typedefs';
+import { formatCurrency } from '../actions/expandledger';
 
 // TODO:
 // 1. Get rid of plus button and make any field clickable to edit
@@ -96,7 +97,7 @@ const BudgetEditor = (props: {
             let perCountCell = <td>{val.periodCount}</td>;
             let perTypeCell = <td>{val.periodType}{val.periodCount > 1 ? 's' : ''}</td>;
             let dateCell = <td>{val.transactionDate}</td>;
-            let amountCell = <td className="Currency">${val.amount}</td>;
+            let amountCell = <td className="Currency">{formatCurrency(val.amount)}</td>;
             let buttonCell = props.editBud.budID !== '' ? <button disabled>x</button> : <button name={`${val.budID}_enable`} id={val.budID} type="button" onClick={props.editEntry}>+</button>;
             let resetButton = '';
             if (props.editBud.budID === val.budID) {

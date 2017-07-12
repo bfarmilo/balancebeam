@@ -132,18 +132,16 @@ class Main extends React.Component {
         this.state.displayCurrency,
         this.state.data
       );
-      this.setState({
-        displayBalance: convertCurrency(
-          this.state.account.balance || 0,
-          this.state.account.currency || 'CAD',
-          this.state.displayCurrency || 'CAD'
-        )
-      });
     });
   }
 
   refreshLedgerBalance(aTable, bTable, cTable, account, currency, oldData, refresh = false) {
     console.log('Home-refreshLedgerBalance: received request to refresh account', account);
+    const newBal = convertCurrency(
+      account.balance || 0,
+      account.currency || 'CAD',
+      this.state.displayCurrency || 'CAD'
+    );
     recalculateBalance(
       aTable,
       bTable,
@@ -173,7 +171,8 @@ class Main extends React.Component {
                 zeroPos: (maxBal > 0
                   ? maxBal / (maxBal - minBal)
                   : 0
-                )
+                ),
+                displayBalance: newBal
               });
               return 'OK';
             })

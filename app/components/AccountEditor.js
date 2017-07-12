@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { accountItem } from '../actions/typedefs';
+import { formatCurrency } from '../actions/expandledger';
 
 // TODO:
 // 1. Get rid of plus button and make any field clickable to edit
@@ -15,9 +16,11 @@ const AccountEditor = (props: {
   const newRow = (
     <tr>
       <td><input className="EditLedger input-large" type="text" name={'new_accountName'} value={props.editAcct.accountName} onChange={props.handleDataChange} /></td>
-      <td><input className="EditLedger Currency input-medium" type="number" name={'new_balance'} value={props.editAcct.balance} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger Currency input-large" type="number" name={'new_balance'} value={props.editAcct.balance} onChange={props.handleDataChange} /></td>
       <td><input className="EditLedger input-large" type="date" name={'new_balanceDate'} value={props.editAcct.balanceDate} onChange={props.handleDataChange} /></td>
       <td><input className="EditLedger input-small" type="text" name={'new_currency'} value={props.editAcct.currency} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-small" type="text" name={`new_accountType`} value={props.editAcct.accountType} onChange={props.handleDataChange} /></td>
+      <td><input className="EditLedger input-small" type="number" name={'new_rate'} value={props.editAcct.rate} onChange={props.handleDataChange} /></td>
       <td><input name={'new_includeAccount'} type="checkbox" value={props.editAcct.includeAccount} onChange={props.handleDataChange} /></td>
       <td className="EditBox"><button name={'new_modify'} type="button" onClick={props.editEntry}>Add</button></td>
     </tr >
@@ -41,7 +44,7 @@ const AccountEditor = (props: {
           {props.accountTable.map(val => {
             let nameCell = <td>{val.accountName}</td>;
             let dateCell = <td>{val.balanceDate}</td>;
-            let balanceCell = <td className={val.balance < 0 ? 'Currency Negative' : 'Currency'}>{val.balance < 0 ? '-' : ''}${Math.abs(val.balance)}</td>;
+            let balanceCell = <td className={val.balance < 0 ? 'Currency Negative' : 'Currency'}>{formatCurrency(val.balance)}</td>;
             let typeCell = <td>{val.accountType}</td>;
             let rateCell = val.accountType === 'loan' ? <td>{Math.round(val.rate * 10000) / 100}%</td> : <td />;
             let currencyCell = <td>{val.currency}</td>;

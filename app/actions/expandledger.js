@@ -253,12 +253,15 @@ function recalculateBalance(
     return callback(null, returnData);
   }
   expandLedger(accountList, budgetList, customTxnList, account, showCurrency, (e, data) => {
-    if (e) return callback(e, null);
-    entryList = data;
-    return callback(
-      null,
-      refreshBalance(entryList, startBalance)
-    );
+    if (e) {
+      return callback(e, null);
+    } else if (data !== null) {
+      entryList = data;
+      return callback(
+        null,
+        refreshBalance(entryList, startBalance)
+      );
+    }
   });
 }
 /*
@@ -272,7 +275,14 @@ matching the currently displayed account
 @showCurrency:String - 'USD' or 'CAD' the currency we want to display
 
 */
-function expandLedger(accountList, budgetList, customTxnList, account, showCurrency, callback) {
+function expandLedger(
+  accountList: Array<accountItem>,
+  budgetList: Array<budgetItem>,
+  customTxnList: Array<customLedgerItem>,
+  account: accountItem,
+  showCurrency: string,
+  callback: (Error | null, Array<ledgerItem> | null) => void
+) {
   const currentDate = new Date(account.balanceDate);
   const lastDate = new Date(
     currentDate.getUTCFullYear(),
@@ -310,7 +320,12 @@ function expandLedger(accountList, budgetList, customTxnList, account, showCurre
   return callback(null, returnLedger);
 }
 
+function formatCurrency(dollars: number): string {
+  return (`${dollars < 0 ? '-' : ''} $${Math.abs(dollars).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`);
+}
+
 module.exports = {
   recalculateBalance,
-  convertCurrency
+  convertCurrency,
+  formatCurrency
 };
