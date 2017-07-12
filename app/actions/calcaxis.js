@@ -24,6 +24,9 @@ const niceNumber = (value, round) => (
 
 const makeTickVals = (startRange, endRange, numTicks) => (
   new Promise((resolve, reject) => {
+    if (startRange === endRange) {
+      return resolve([-100, -75, -50, -25, 0, 25, 50, 75, 100]);
+    }
     niceNumber(endRange - startRange, 0)
       .then(result => niceNumber((result / numTicks), 1))
       .then(step => ({

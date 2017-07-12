@@ -1,5 +1,5 @@
 import React from 'react';
-import { recalculateBalance, convertCurrency } from '../actions/expandledger';
+import { recalculateBalance, convertCurrency, formatCurrency } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
 import { makeTickVals } from '../actions/calcaxis';
 import ChartArea from '../components/ChartArea';
@@ -404,6 +404,13 @@ class Main extends React.Component {
         viewCurr={this.state.displayCurrency}
         changeCurr={this.changeViewCurrency}
         viewAccount={this.state.accountMode}
+        maxChars={this.state.accountTable.reduce((prev, curr) => {
+          const totalLength = curr.accountName.length + formatCurrency(curr.balance).length + 3;
+          if (totalLength > prev) {
+            return totalLength;
+          }
+          return prev;
+        }, 0)}
       />
     );
     const accountArea = (

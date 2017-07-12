@@ -315,13 +315,13 @@ function expandLedger(
         showCurrency)
       )
     )
-    .reduce((prev, curr) => prev.concat(curr));
+    .reduce((prev, curr) => prev.concat(curr), []);
   sortLedger(returnLedger);
   return callback(null, returnLedger);
 }
 
 function formatCurrency(dollars: number): string {
-  return (`${dollars < 0 ? '-' : ''} $${Math.abs(dollars).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`);
+  return (`${dollars < 0 ? '-' : ''}$${Math.abs(dollars).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`);
 }
 
 module.exports = {

@@ -3,6 +3,7 @@
 import React from 'react';
 import styles from './ControlArea.css';
 import type { accountList } from '../actions/typedefs';
+import { formatCurrency } from '../actions/expandledger';
 
 const ControlArea = (props: {
   accountTable: Array<accountList>,
@@ -14,23 +15,24 @@ const ControlArea = (props: {
   updateLedger: (()=> Event),
   changeCurr: (()=> Event),
   viewCurr: string,
-  viewAccount: boolean
+  viewAccount: boolean,
+  maxChars: number
 }) => (
   <div className="LedgerArea">
     <span className={styles.customdropdown}>
       <select name="ChooseAcct" id="accountselect" disabled={props.viewBudget} onChange={props.selectAccount} value={parseInt(props.account.acctID, 10)}>
         {props.accountTable.reduce((result, val) => {
-          const spaces = new Array(25 - val.accountName.length - val.balance.toString().length).join('\xa0');
+          const spaces = new Array(props.maxChars - val.accountName.length - formatCurrency(val.balance).length).join('\xa0');
           if (val.includeAccount) {
             result.push(
               <option key={val.acctID} value={val.acctID}>
-                {val.accountName}{spaces}{val.balance < 0 ? '-' : ''}${Math.abs(val.balance)}
+                {val.accountName}{spaces}{formatCurrency(val.balance)}
               </option>
             );
           } else if (val.balance !== 0) {
             result.push(
               <option key={val.acctID} disabled value={val.acctID}>
-                {val.accountName}{spaces}{val.balance < 0 ? '-' : ''}${Math.abs(val.balance)}
+                {val.accountName}{spaces}{formatCurrency(val.balance)}
               </option>
             );
           }
