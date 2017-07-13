@@ -270,6 +270,7 @@ class Main extends React.Component {
       newRecord.periodCount = parseInt(newRecord.periodCount, 10);
       newRecord.currency = this.state.displayCurrency;
       newRecord.delay = parseInt(newRecord.delay, 10);
+      newRecord.rate = parseFloat(newRecord.rate);
       if (budID === 'new') {
         console.log(`Main: adding new record with budID ${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`);
         newRecord.budID = `${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`;

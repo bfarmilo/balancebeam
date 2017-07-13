@@ -29,7 +29,8 @@ export type customLedgerItem = {
   Custom: boolean | void,
   Description: string,
   currency: string,
-  delay: ?number
+  delay: ?number,
+  skip: boolean | void
 };
 
 export type accountItem = {
@@ -60,5 +61,5 @@ export type budgetItem = {
   transactionDate: string,
   currency: string,
   delay?: number | string,
-  rate?: number
+  rate?: number | string
 };

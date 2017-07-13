@@ -20,29 +20,6 @@ const CAD = 'CAD';
 const USD = 'USD';
 
 /*
-
-budgetList has the following fields
-    budID: a unique identifier for each transaction (string)
-    fromAccount: reference to an Account
-    toAccount: reference to an Account
-    description: text description of the Transaction
-    amount: amount per transaction
-    periodCount: Number of period units between transactions
-    periodType: Year, Month, Week
-    totalCount: (optional) max number to expand, note need to update this after time moves forward ?
-    transactionDate: Date of first transaction, note need to update this based on current day/time ?
-
-returns a ledger (array)
-    txnID: a globally unique identifier for each transaction (string)
-    txnDate: transaction date (string)
-    fromAccount: which account this side of the transaction is attached to (string)
-    Description: description of transaction (string)
-    Amount: value of the transaction, outflows are negative(number)
-    Balance: calculated running balance
-
-*/
-
-/*
 expandItem takes a budget record and expands it out based on the frequency of repetition.
 
 @param accountList:Array - an array of Account objects
@@ -143,6 +120,9 @@ function expandItem(
     (result: Array<ledgerItem | customLedgerItem | null>, item: ledgerItem) => {
       const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
       if (updated.length > 0) {
+        if (Object.hasOwnProperty.call(updated[0], 'skip')) {
+          return result;
+        }
         isDebit = (updated[0].fromAccount === Account);
         const ledgerDate = new Date(updated[0].txnDate);
         if (Object.hasOwnProperty.call(updated[0], 'delay') && !isDebit) {

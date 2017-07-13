@@ -62,10 +62,11 @@ function modifyLedger(
   // merge newEntry into the customLedger
   try {
     console.log(`'modifyLedger called with action ${action}`);
+    let updatedLedger = [];
+    const today = new Date();
     switch (action) {
       case 'modify':
         {
-          let updatedLedger = [];
           let toAccount;
           let fromAccount;
           let Amount = parseFloat(modifiedEntry.Amount);
@@ -89,13 +90,11 @@ function modifyLedger(
             currency,
             delay: budgetEntry.delay
           };
-          console.log(`modifyLedger: looking for entry ${newEntry}`);
           if (customLedger.find(item => item.txnID === newEntry.txnID)) {
             updatedLedger = customLedger.reduce((result, item) => {
               if (item.txnID === newEntry.txnID) {
-                console.log('modifyLedger: found entry with txnID, updating', item.txnID, item, newEntry);
                 result.push(newEntry);
-              } else if (new Date(item.txnDate) >= new Date()) {
+              } else if (new Date(item.txnDate) >= today) {
                 result.push(item);
               }
               return result;
@@ -110,6 +109,28 @@ function modifyLedger(
           null,
           customLedger.filter(item => item.txnID !== modifiedEntry.txnID)
         );
+      case 'skip': {
+        const newItem = { ...modifiedEntry };
+        today.setDate(today.getDate() + 1);
+        updatedLedger = customLedger.reduce((result, item) => {
+          if (item.txnID === newItem.txnID) {
+            console.log('modifyLedger: skipping transaction ID', newItem.txnID);
+            newItem.skip = true;
+            newItem.fromAccount = 0;
+            newItem.toAccount = 0;
+            newItem.delay = 0;
+            newItem.txnDate = today.toISOString().split('T')[0];
+            result.push(newItem);
+          } else {
+            result.push(item);
+          }
+          return result;
+        }, []);
+        return callback(
+          null,
+          updatedLedger
+        );
+      }
       default:
         console.log('modifyLedger: unknown action received', action);
         throw new Error('unknown action received');

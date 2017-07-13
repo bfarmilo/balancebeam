@@ -16,7 +16,7 @@ fse.readJSON(config)
   .then(acct => getAllUpdates(configPath, acct.accountList))
   .then(data => {
     console.log('getAllUpdates: got updated account balance data');
-    console.log(`getAllUpates: writing to ${writePath}`);
+    console.log(`getAllUpdates: writing to ${writePath}`);
     return fse.writeFile(`${writePath}`, `{ "accountList": ${JSON.stringify(data)} }`);
   })
   .then(() => console.log('getAllUpdates: file updated'))
