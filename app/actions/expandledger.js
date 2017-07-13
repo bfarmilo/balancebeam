@@ -183,7 +183,7 @@ function refreshBalance(ledgerList: Array<ledgerItem>, startBalance: number): Ar
   return ledgerList.map(entry => {
     const result = { ...entry };
     result.Amount = entry.rate !== 0 ? runningBalance * entry.rate : entry.Amount;
-    result.Balance = Math.round((runningBalance + entry.Amount) * 100) / 100;
+    result.Balance = Math.round((runningBalance + result.Amount) * 100) / 100;
     runningBalance = result.Balance;
     return result;
   });

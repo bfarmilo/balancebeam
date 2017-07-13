@@ -364,7 +364,56 @@ class Main extends React.Component {
   }
 
   editAccountRow(event) {
-
+    const [acctID, action] = event.currentTarget.name.split('_');
+    console.log(`Main: got ${action} account event on ${acctID}`, event.currentTarget.name);
+    if (acctID === 'new') {
+      console.log('Main:got request to add new account');
+      const newRecord = { ...blankAcct };
+      newRecord.currency = this.state.displayCurrency;
+      this.setState({ editAcct: newRecord });
+    }
+    switch (action) {
+      case 'enable':
+        console.log('found acctID', acctID);
+        this.setState({
+          editAcct: this.state.accountTable.find(entry => entry.acctID === acctID)
+        });
+        break;
+      case 'modify': {
+        let currentAccountTable = [];
+        const newRecord = { ...this.state.editAcct };
+        console.log(newRecord.balanceDate);
+        newRecord.balance = parseFloat(newRecord.balance);
+        newRecord.rate = parseFloat(newRecord.rate);
+        if (acctID === 'new') {
+          console.log(`Main: adding new account record with acctID ${Math.max(...this.state.accountTable.map((v) => parseInt(v.acctID, 10))) + 1}`);
+          newRecord.acctID = `${Math.max(...this.state.accountTable.map((v) => parseInt(v.acctID, 10))) + 1}`;
+          currentAccountTable = this.state.accountTable.concat(newRecord);
+        } else {
+          currentAccountTable = this.state.accountTable.reduce((result, value) => {
+            if (value.acctID === newRecord.acctID) {
+              result.push(newRecord);
+            } else {
+              result.push(value);
+            }
+            return result;
+          }, []);
+        }
+        console.log('Home-editAccountRow: updating this account list to ', currentAccountTable);
+        this.setState({ accountTable: currentAccountTable, editAcct: blankAcct });
+        ipcRenderer.send('writeOutput', 'accountList', currentAccountTable);
+        break;
+      }
+      case 'clear': {
+        console.log('Main: request to delete account entry', acctID);
+        const currentAccountTable = this.state.accountTable.filter(val => val.acctID !== acctID);
+        ipcRenderer.send('writeOutput', 'accountList', currentAccountTable);
+        this.setState({ accountTable: currentAccountTable, editAcct: blankAcct });
+        break;
+      }
+      default:
+        console.log('editAccountRow: unknown command invoked', action);
+    }
   }
 
   toggleShowBudget() {
