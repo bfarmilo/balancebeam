@@ -115,6 +115,10 @@ function updateTable(accounts, updates) {
       currentAccount.balance = check.reduce(value => value).balance;
       currentAccount.currency = check.reduce(value => value).currency;
       currentAccount.balanceDate = todaysDate.toISOString().split('T')[0];
+      if (Object.hasOwnProperty.call(currentAccount, 'paymentDate')
+        && todaysDate.getDate() === currentAccount.paymentDate) {
+        currentAccount.paymentBal = currentAccount.balance;
+      }
     }
     return currentAccount;
   });

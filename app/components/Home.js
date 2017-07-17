@@ -1,7 +1,7 @@
 import React from 'react';
 import { recalculateBalance, convertCurrency, formatCurrency } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
-import { makeTickVals } from '../actions/calcaxis';
+import { makeTickVals, createTargetChart } from '../actions/calcaxis';
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../components/ControlArea';
@@ -155,8 +155,14 @@ class Main extends React.Component {
         } else {
           this.minBalance = Math.min(...data.map(v => v.Balance));
           this.maxBalance = Math.max(...data.map(v => v.Balance));
-          makeTickVals(this.minBalance, this.maxBalance, 8)
+          if (Object.hasOwnProperty.call(account, 'paymentDate')) {
+            const target = createTargetChart(account);
+            this.minBalance = Math.min(...target.map(v => v.Balance), this.minBalance);
+            this.maxBalance = Math.max(...target.map(v => v.Balance), this.maxBalance);
+          }
+          makeTickVals(this.minBalance, this.maxBalance)
             .then(tickValues => {
+              console.log(tickValues);
               const maxBal = Math.max(...tickValues, this.maxBalance);
               const minBal = Math.min(...tickValues, this.minBalance);
               this.setState({
@@ -483,9 +489,12 @@ class Main extends React.Component {
         <div >
           {controlArea}
           <ChartArea
+            startBalance={{ txnDate: this.state.account.balanceDate, Balance: this.state.account.balance }}
             data={this.state.data}
             tickValues={this.state.tickValues}
             zeroPos={this.state.zeroPos}
+            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate') ? createTargetChart(this.state.account) : [{ txnDate: currentDate.toISOString().split('T')[0], Balance: 0 }]}
+            showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentDate')}
           />
           <BalanceTable
             balance={this.state.displayBalance}

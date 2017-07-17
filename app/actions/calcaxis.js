@@ -9,12 +9,12 @@ const niceNumber = (value, round) => (
         else if (fraction < 3.0) niceFraction = 2.0;
         else if (fraction < 7.0) niceFraction = 5.0;
         else niceFraction = 10.0;
-      } else {
-        if (fraction <= 1.0) niceFraction = 1.0;
-        else if (fraction <= 2.0) niceFraction = 2.0;
-        else if (fraction <= 5.0) niceFraction = 5.0;
-        else niceFraction = 10.0;
+        return resolve((niceFraction * (10 ** exponent)));
       }
+      if (fraction <= 1.0) niceFraction = 1.0;
+      else if (fraction <= 2.0) niceFraction = 2.0;
+      else if (fraction <= 5.0) niceFraction = 5.0;
+      else niceFraction = 10.0;
       return resolve((niceFraction * (10 ** exponent)));
     } catch (err) {
       return reject(err);
@@ -22,31 +22,77 @@ const niceNumber = (value, round) => (
   })
 );
 
-const makeTickVals = (startRange, endRange, numTicks) => (
+const generateArray = (minVal, maxVal, stepVal) => {
+  const returnArray = [];
+  for (let i = 0; (minVal + (i * stepVal) <= maxVal); i += 1) {
+    returnArray.push((i * stepVal) + minVal);
+  }
+  return returnArray;
+};
+
+const makeTickVals = (startRange, endRange, numTicks = 8) => (
   new Promise((resolve, reject) => {
     if (startRange === endRange) {
-      return resolve([-100, -75, -50, -25, 0, 25, 50, 75, 100]);
+      return resolve([-60, -40, -20, 0, 20, 40, 60, 80]);
     }
-    niceNumber(endRange - startRange, 0)
-      .then(result => niceNumber((result / numTicks), 1))
+    niceNumber(endRange - startRange, false)
+      .then(result => niceNumber(result / (numTicks), true))
       .then(step => ({
         low: Math.floor(startRange / step) * step,
         high: Math.ceil(endRange / step) * step,
         step
-      })
-      )
-      .then(output => {
-        const returnArray = [];
-        for (let i = 0; i <= numTicks; i += 1) {
-          returnArray.push((i * output.step) + output.low);
-        }
-        return resolve(returnArray);
-      })
+      }))
+      .then(output => resolve(generateArray(output.low, output.high, output.step)))
       .catch(err => reject(err));
   })
 );
 
+const createBudget = (account) => {
+  const currentDate = new Date();
+  const burnRate = -(account.targetSpend * 12) / 365;
+  let startBal = account.paymentBal;
+  const paymentDate = new Date(
+    currentDate.getUTCFullYear(),
+    currentDate.getUTCDate() >= account.paymentDate
+      ? currentDate.getUTCMonth() + 1
+      : currentDate.getUTCMonth(),
+    account.paymentDate
+  );
+  const oldDate = new Date(paymentDate);
+  oldDate.setUTCMonth(
+    currentDate.getUTCDate() >= account.paymentDate
+      ? currentDate.getUTCMonth()
+      : currentDate.getUTCMonth() - 1
+  );
+
+  if (currentDate === paymentDate) {
+    startBal = account.balance;
+  }
+  return { start: oldDate, end: paymentDate, startBal, burnRate };
+};
+
+const createTargetChart = (account) => {
+  const { start, end, startBal, burnRate } = createBudget(account);
+  let currentDate = new Date(start);
+  let currentBal = startBal;
+  const returnArray = [];
+  do {
+    if (currentDate >= new Date(account.balanceDate)) {
+      const txnDate = currentDate.toISOString().split('T')[0];
+      returnArray.push({ txnDate, Balance: Math.round(currentBal * 100) / 100 });
+    }
+    currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+    currentBal += burnRate;
+  }
+  while (currentDate < end);
+  return returnArray;
+};
+
 module.exports = {
-  makeTickVals
+  makeTickVals,
+  generateArray,
+  niceNumber,
+  createBudget,
+  createTargetChart
 };
 

@@ -264,6 +264,7 @@ function expandLedger(
   callback: (Error | null, Array<ledgerItem> | null) => void
 ) {
   const currentDate = new Date(account.balanceDate);
+  currentDate.setUTCDate(currentDate.getUTCDate() - 1);
   const lastDate = new Date(
     currentDate.getUTCFullYear(),
     currentDate.getUTCMonth() + NUM_MONTHS,

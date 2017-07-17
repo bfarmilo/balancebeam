@@ -29,7 +29,8 @@
     "package-win": "npm run build && build --win --x64",
     "package-linux": "npm run build && build --linux",
     "package-all": "npm run build && build -mwl",
-    "custom-test": "set DEBUG=nightmare && node ./app/expandledger.test.js"
+    "custom-test": "set DEBUG=nightmare && node ./app/expandledger.test.js",
+    "getaccounts": "set DEBUG=nightmare && node ./app/actions/updateall.js \"../../../Dropbox (Personal)/Swap/Budget\" config.json test"
   },
   "browserslist": "electron 1.6",
   "build": {

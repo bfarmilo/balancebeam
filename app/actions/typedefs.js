@@ -44,7 +44,8 @@ export type accountItem = {
   rate?: number | string,
   updateRef?: string,
   updateSequence?: Array<updateSequenceItem> | void,
-  statementDate: number | void
+  paymentDate: number | void,
+  paymentBal: number | void
 };
 
 export type budgetItem = {

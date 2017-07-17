@@ -5,10 +5,18 @@ import { VictoryLine, VictoryChart, VictoryAxis, VictoryTheme, VictoryVoronoiCon
 import styles from './ChartArea.css';
 import type { ledgerItem } from '../actions/typedefs';
 
+type targetItem = {
+  txnDate: string,
+  Balance: number
+};
+
 const ChartArea = (props: {
   data: Array<ledgerItem>,
   tickValues: Array<number>,
-  zeroPos: number
+  zeroPos: number,
+  target: Array<targetItem>,
+  showTarget: boolean,
+  startBalance: targetItem
 }) => {
   const posHeight = Math.round(props.zeroPos * 100);
   const mainaxis = {
@@ -22,8 +30,25 @@ const ChartArea = (props: {
     }
   };
   const linestyle = {
-    data: { stroke: 'rgba(255,255,255,0.8)', strokeWidth: 1.5 }
+    data: { stroke: 'rgba(255,255,255,0.8)', strokeWidth: 1.5 },
+    labels: { fill: 'black' }
   };
+  const targetLine = (
+    <VictoryLine
+      data={props.target}
+      x={(x) => new Date(x.txnDate)}
+      y={'Balance'}
+      style={{
+        data: {
+          stroke: 'blue',
+        },
+        labels: {
+          fill: 'blue',
+        }
+      }}
+    />
+  );
+  console.log('chart: got target data', props.target, props.showTarget);
   return (
     <div>
       <svg viewBox="0 0 340 200">
@@ -41,7 +66,16 @@ const ChartArea = (props: {
         <rect x="50" y="50" width="250" height={Math.min(posHeight, 100)} fill="url(#chartarea)" />
         <rect x="50" y={50 + posHeight} width="250" height={Math.max(100 - posHeight, 0)} fill="url(#negarea)" />
         <VictoryChart
-          containerComponent={<VictoryVoronoiContainer />}
+          containerComponent={
+            <VictoryVoronoiContainer
+              dimension="x"
+              labels={(d) => {
+                const asDate = new Date(d.txnDate);
+                return `${asDate.toDateString().slice(4, 10)}: $${d.Balance}`;
+              }}
+              labelComponent={<VictoryTooltip style={{ fontSize: 6 }} />}
+            />
+          }
           height={200}
           theme={VictoryTheme.material}
           className={styles.chart}
@@ -69,17 +103,13 @@ const ChartArea = (props: {
             }}
           />
           <VictoryLine
-            data={props.data}
+            data={[props.startBalance].concat(props.data)}
             style={linestyle}
             interpolation={'stepAfter'}
             x={(x) => new Date(x.txnDate)}
             y={'Balance'}
-            labels={(y) => {
-              const asDate = new Date(y.txnDate);
-              return `${asDate.toDateString().slice(4, 10)}: $${y.Balance}`;
-            }}
-            labelComponent={<VictoryTooltip style={{ fontSize: 6 }} />}
           />
+          {targetLine}
         </VictoryChart>
       </svg>
     </div >

@@ -100,7 +100,11 @@ app.on('ready', async () => {
         console.log('all promises resolved');
         return 'done';
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        if (mainWindow) {
+          mainWindow.webContents.send('message', `Error with getting initial data ${err.name}: ${err.message}`);
+        }
+      });
   });
 
   mainWindow.on('closed', () => {
@@ -115,7 +119,13 @@ app.on('ready', async () => {
 const updateAccounts = (target) => {
   new Promise((resolve, reject) => {
     exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
-      if (err) return reject(stderr);
+      console.error(stderr);
+      if (err || stderr) {
+        if (mainWindow) {
+          mainWindow.webContents.send('message', `Error with executing updateall ${err.name}: ${err.message}`);
+        }
+        return reject(stderr);
+      }
       return resolve('accountList');
     });
   })
@@ -124,7 +134,12 @@ const updateAccounts = (target) => {
       if (target) target.send(results.dataType, results.value);
       return 'done';
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+      console.error(err);
+      if (mainWindow) {
+        mainWindow.webContents.send('message', `Error updating Accounts ${JSON.stringify(err)}`);
+      }
+    });
 };
 
 const getData = (dataType) => new Promise((resolve, reject) => {
@@ -154,7 +169,11 @@ if (process.env.LOCALAPPDATA) {
       dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
       return console.log(`Main: Good DropBox Path:${dropBoxPath}`);
     })
-    .catch(error => console.error(`Error getting Dropbox path: ${error}`));
+    .catch(error => {
+      if (mainWindow) {
+        mainWindow.webContents.send('message', `Error with dropbox path ${error.name}: ${error.message}`);
+      }
+    });
 }
 // event listeners
 
@@ -166,7 +185,11 @@ ipcMain.on('update', e => {
 ipcMain.on('writeOutput', (e, dataType, value) => {
   console.log(`Main: received call to update ${dataType} from window`, e.sender.currentIndex);
   fse.writeFile(`${dropBoxPath}\\${dataType}.json`, `{ "${dataType}": ${JSON.stringify(value)}}`, err => {
-    if (err) console.error(err);
+    if (err) {
+      if (mainWindow) {
+        mainWindow.webContents.send('message', `${err.name}: ${err.message}`);
+      }
+    }
   });
 });
 
@@ -180,5 +203,9 @@ ipcMain.on('updateLedger', e => {
       }
       return 'done';
     })
-    .catch(error => console.error(error));
+    .catch(error => {
+      if (mainWindow) {
+        mainWindow.webContents.send('message', `Error updating ledger ${error.name}: ${error.message}`);
+      }
+    });
 });
