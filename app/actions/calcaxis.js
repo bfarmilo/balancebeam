@@ -47,17 +47,18 @@ const makeTickVals = (startRange, endRange, numTicks = 8) => (
   })
 );
 
-const createBudget = (account) => {
+const createBudget = (account, numMonths) => {
   const currentDate = new Date();
   const burnRate = -(account.targetSpend * 12) / 365;
   let startBal = account.paymentBal;
   const paymentDate = new Date(
     currentDate.getUTCFullYear(),
     currentDate.getUTCDate() >= account.paymentDate
-      ? currentDate.getUTCMonth() + 1
-      : currentDate.getUTCMonth(),
+      ? currentDate.getUTCMonth() + numMonths
+      : currentDate.getUTCMonth() + (numMonths - 1),
     account.paymentDate
   );
+  paymentDate.setUTCHours(0, 0, 0, 0);
   const oldDate = new Date(paymentDate);
   oldDate.setUTCMonth(
     currentDate.getUTCDate() >= account.paymentDate
@@ -68,21 +69,28 @@ const createBudget = (account) => {
   if (currentDate === paymentDate) {
     startBal = account.balance;
   }
+  console.log('target ranges', oldDate, paymentDate, startBal, burnRate);
   return { start: oldDate, end: paymentDate, startBal, burnRate };
 };
 
-const createTargetChart = (account) => {
-  const { start, end, startBal, burnRate } = createBudget(account);
+const createTargetChart = (account, numMonths = 3) => {
+  const { start, end, startBal, burnRate } = createBudget(account, numMonths);
+  const today = new Date(account.balanceDate);
+  today.setUTCHours(0, 0, 0, 0);
   let currentDate = new Date(start);
-  let currentBal = startBal;
+  let currentBal = startBal - account.targetSpend;
   const returnArray = [];
   do {
-    if (currentDate >= new Date(account.balanceDate)) {
+    console.log(currentDate, currentBal);
+    if (currentDate >= today) {
       const txnDate = currentDate.toISOString().split('T')[0];
       returnArray.push({ txnDate, Balance: Math.round(currentBal * 100) / 100 });
     }
     currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
     currentBal += burnRate;
+    if (account.paymentDate === currentDate.getDate()) {
+      currentBal += account.targetSpend;
+    }
   }
   while (currentDate < end);
   return returnArray;

@@ -7,6 +7,21 @@
       "type": "npm",
       "script": "test",
       "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "getaccounts",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "hot-updates-server",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "start-hot-renderer",
+      "problemMatcher": []
     }
   ]
 }

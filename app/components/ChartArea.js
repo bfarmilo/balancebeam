@@ -40,7 +40,8 @@ const ChartArea = (props: {
       y={'Balance'}
       style={{
         data: {
-          stroke: 'blue',
+          stroke: 'rgba(0,0,255,0.3)',
+          strokeWidth: 4,
         },
         labels: {
           fill: 'blue',

@@ -8,11 +8,11 @@ const accountList = [
     "accountType": "liability",
     "acctID": "7",
     "balance": -2084.57,
-    "balanceDate": "2017-07-17",
+    "balanceDate": "2017-07-19",
     "currency": "CAD",
     "includeAccount": true,
-    "paymentDate": 17,
-    "paymentBal": 0,
+    "paymentDate": 25,
+    "paymentBal": 100,
     "targetSpend": 3650,
     "updateRef": "MBNA",
     "updateSequence": [
@@ -112,11 +112,12 @@ describe('creating a nice tick range', () => {
 });
 
 describe('creating a credit card spending budget', () => {
-  const endDate = new Date('2017-08-17');
-  endDate.setUTCHours(4);
-  const startDate = new Date(endDate);
-  startDate.setUTCMonth(endDate.getUTCMonth() - 1);
-  const testResult = actions.createBudget(accountList[0]);
+  const numMonths = 3;
+  const startDate = new Date('2017-07-19T00:00:00.0Z');
+  const endDate = new Date(startDate);
+  endDate.setUTCMonth(startDate.getUTCMonth() + numMonths);
+  const testResult = actions.createBudget(accountList[0], numMonths);
+  console.log(testResult);
   it('should calculate the end date properly', () => {
     expect(testResult.end).toEqual(endDate);
   });
@@ -127,13 +128,25 @@ describe('creating a credit card spending budget', () => {
     expect(testResult.burnRate).toBeCloseTo(-120, 4);
     expect(testResult.startBal).toEqual(accountList[0].paymentBal);
   });
+  const arrayResult = actions.createTargetChart(accountList[0], numMonths);
   it('should calculate the target daily balance for the next month', () => {
-    expect(actions.createTargetChart(accountList[0], 3650)).toEqual(expect.arrayContaining([
+    expect(arrayResult).toEqual(expect.arrayContaining([
       expect.objectContaining({
         txnDate: expect.any(String),
         Balance: expect.any(Number)
       })
-    ]
-    ));
+    ])
+    );
+  });
+  it('should project the target forward 6 months by adding in the target amount at each pay anniversary', () => {
+    console.log(arrayResult);
+    expect(arrayResult).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          txnDate: expect.any(String),
+          Balance: expect.any(Number)
+        })
+      ])
+    );
   });
 });

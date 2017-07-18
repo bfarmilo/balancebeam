@@ -12,6 +12,8 @@ const ipcRenderer = require('electron').ipcRenderer;
 
 const currentDate = new Date();
 
+const NUM_MONTHS = 3;
+
 const blankBud = {
   budID: '',
   type: 'Expense',
@@ -156,7 +158,7 @@ class Main extends React.Component {
           this.minBalance = Math.min(...data.map(v => v.Balance));
           this.maxBalance = Math.max(...data.map(v => v.Balance));
           if (Object.hasOwnProperty.call(account, 'paymentDate')) {
-            const target = createTargetChart(account);
+            const target = createTargetChart(account, NUM_MONTHS);
             this.minBalance = Math.min(...target.map(v => v.Balance), this.minBalance);
             this.maxBalance = Math.max(...target.map(v => v.Balance), this.maxBalance);
           }
@@ -493,7 +495,7 @@ class Main extends React.Component {
             data={this.state.data}
             tickValues={this.state.tickValues}
             zeroPos={this.state.zeroPos}
-            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate') ? createTargetChart(this.state.account) : ''}
+            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate') ? createTargetChart(this.state.account, NUM_MONTHS) : ''}
             showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentDate')}
           />
           <BalanceTable
