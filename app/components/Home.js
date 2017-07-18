@@ -493,7 +493,7 @@ class Main extends React.Component {
             data={this.state.data}
             tickValues={this.state.tickValues}
             zeroPos={this.state.zeroPos}
-            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate') ? createTargetChart(this.state.account) : [{ txnDate: currentDate.toISOString().split('T')[0], Balance: 0 }]}
+            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate') ? createTargetChart(this.state.account) : ''}
             showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentDate')}
           />
           <BalanceTable

@@ -14,7 +14,7 @@ const ChartArea = (props: {
   data: Array<ledgerItem>,
   tickValues: Array<number>,
   zeroPos: number,
-  target: Array<targetItem>,
+  target: Array<targetItem> | string,
   showTarget: boolean,
   startBalance: targetItem
 }) => {
@@ -33,7 +33,7 @@ const ChartArea = (props: {
     data: { stroke: 'rgba(255,255,255,0.8)', strokeWidth: 1.5 },
     labels: { fill: 'black' }
   };
-  const targetLine = (
+  const targetLine = props.target !== '' ? (
     <VictoryLine
       data={props.target}
       x={(x) => new Date(x.txnDate)}
@@ -47,7 +47,7 @@ const ChartArea = (props: {
         }
       }}
     />
-  );
+  ) : null;
   console.log('chart: got target data', props.target, props.showTarget);
   return (
     <div>
