@@ -69,7 +69,6 @@ const createBudget = (account, numMonths) => {
   if (currentDate === paymentDate) {
     startBal = account.balance;
   }
-  console.log('target ranges', oldDate, paymentDate, startBal, burnRate);
   return { start: oldDate, end: paymentDate, startBal, burnRate };
 };
 
@@ -81,7 +80,6 @@ const createTargetChart = (account, numMonths = 3) => {
   let currentBal = startBal - account.targetSpend;
   const returnArray = [];
   do {
-    console.log(currentDate, currentBal);
     if (currentDate >= today) {
       const txnDate = currentDate.toISOString().split('T')[0];
       returnArray.push({ txnDate, Balance: Math.round(currentBal * 100) / 100 });

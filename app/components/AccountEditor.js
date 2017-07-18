@@ -13,6 +13,16 @@ const AccountEditor = (props: {
   handleDataChange: (() => Event),
   editEntry: (() => Event)
 }) => {
+  const advancedRow = (acctID: string) => (
+    <tr>
+      <td>Spend Target:</td>
+      <td><input className="EditLedger input-large" type="text" name={`${acctID}_targetSpend`} value={props.editAcct.targetSpend} onChange={props.handleDataChange} /></td>
+      <td>Payment Day-of-Month:</td>
+      <td><input className="EditLedger input-small" type="text" name={`${acctID}_paymentDate`} value={props.editAcct.paymentDate} onChange={props.handleDataChange} /></td>
+      <td>Bal after last Pmnt:</td>
+      <td><input className="EditLedger input-small" type="text" name={`${acctID}_paymentBal`} value={props.editAcct.paymentBal} onChange={props.handleDataChange} /></td>
+    </tr>
+  );
   const newRow = (
     <tr>
       <td><input className="EditLedger input-large" type="text" name={'new_accountName'} value={props.editAcct.accountName} onChange={props.handleDataChange} /></td>
@@ -77,6 +87,7 @@ const AccountEditor = (props: {
               </tr>);
           })}
           {props.editAcct.acctID !== '' ? <tr /> : newRow}
+          {props.editAcct.accountType === 'liability' ? advancedRow(props.editAcct.acctID) : <tr />}
         </tbody>
       </table>
     </div>

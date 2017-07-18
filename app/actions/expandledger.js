@@ -12,7 +12,7 @@ const exchangeRates = {
 };
 
 const USDCAD = exchangeRates.USD;
-const NUM_MONTHS = 6;
+const NUM_MONTHS = 8;
 
 const DEBIT = 'DEBIT';
 const CREDIT = 'CREDIT';
@@ -74,7 +74,7 @@ function expandItem(
     Description = budgetRecord.description;
     const MAX_ITEMS = budgetRecord.totalCount !== 0
       ? budgetRecord.totalCount
-      : Math.round((NUM_MONTHS / 12) * (periodCounts[budgetRecord.periodType] + 1));
+      : Math.round((NUM_MONTHS / 12) * ((periodCounts[budgetRecord.periodType] / budgetRecord.periodCount) + 1));
     let dateOffset = 0;
     if (!isDebit && Object.hasOwnProperty.call(budgetRecord, 'delay')) dateOffset = budgetRecord.delay;
     if (dateOffset !== 0) {
@@ -306,7 +306,7 @@ function formatCurrency(dollars: number): string {
 }
 
 module.exports = {
-  recalculateBalance,
-  convertCurrency,
+      recalculateBalance,
+    convertCurrency,
   formatCurrency
 };

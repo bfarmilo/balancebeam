@@ -12,7 +12,7 @@ export type ledgerItem = {
   txnID: string,
   txnDate: string,
   Description: string,
-  Amount: number | string,
+  Amount: number,
   Account: number | void,
   Custom: boolean | void,
   rate: ?number | void,
@@ -37,15 +37,16 @@ export type accountItem = {
   acctID: string,
   accountName: string,
   currency: string,
-  balance: number | string,
+  balance: number,
   balanceDate: string,
   includeAccount: boolean,
   accountType: string,
-  rate?: number | string,
+  rate?: number | void,
   updateRef?: string,
   updateSequence?: Array<updateSequenceItem> | void,
   paymentDate: number | void,
-  paymentBal: number | void
+  paymentBal: number | void,
+  targetSpend: number | void
 };
 
 export type budgetItem = {
@@ -53,14 +54,14 @@ export type budgetItem = {
   type: string,
   description: string,
   category: string,
-  fromAccount: number | string,
-  toAccount: number | string,
-  amount: number | string,
-  periodCount: number | string,
+  fromAccount: number,
+  toAccount: number,
+  amount: number,
+  periodCount: number,
   periodType: string,
-  totalCount: number | string,
+  totalCount: number,
   transactionDate: string,
   currency: string,
-  delay?: number | string,
-  rate?: number | string
+  delay?: number,
+  rate?: number
 };

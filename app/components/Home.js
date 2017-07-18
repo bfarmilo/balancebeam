@@ -234,14 +234,32 @@ class Main extends React.Component {
     const [acctID, dataType] = event.target.name.split('_');
     const editAcct = { ...this.state.editAcct };
     console.log('account change detected on', acctID, dataType);
-    editAcct[dataType] = event.target.value;
+    switch (dataType) {
+      case 'paymentBal': case 'targetSpend': case 'rate': case 'balance':
+        editAcct[dataType] = parseFloat(event.target.value);
+        break;
+      case 'paymentDate':
+        editAcct[dataType] = parseInt(event.target.value, 10);
+        break;
+      default:
+        editAcct[dataType] = event.target.value;
+    }
     this.setState({ editAcct });
   }
 
   handleLedgerChange(event) {
     const dataType = event.target.name.split('_')[1];
     const editTxn = { ...this.state.editTxn };
-    editTxn[dataType] = event.target.value;
+    switch (dataType) {
+      case 'Account': case 'delay':
+        editTxn[dataType] = parseInt(event.target.value, 10);
+        break;
+      case 'Amount': case 'rate': case 'Balance':
+        editTxn[dataType] = parseFloat(event.target.value);
+        break;
+      default:
+        editTxn[dataType] = event.target.value;
+    }
     this.setState({ editTxn });
   }
 
@@ -249,7 +267,17 @@ class Main extends React.Component {
     const [budID, dataType] = event.target.name.split('_');
     const editBud = { ...this.state.editBud };
     console.log('budget change detected on', budID, dataType);
-    editBud[dataType] = event.target.value;
+    switch (dataType) {
+      case 'amount': case 'rate':
+        editBud[dataType] = parseFloat(event.target.value);
+        break;
+      case 'fromAccount': case 'toAccount': case 'periodCount':
+      case 'totalCount': case 'delay':
+        editBud[dataType] = parseInt(event.target.value, 10);
+        break;
+      default:
+        editBud[dataType] = event.target.value;
+    }
     this.setState({ editBud });
   }
 
@@ -272,13 +300,7 @@ class Main extends React.Component {
       let currentBudget = [];
       let currentBudgetTable = [];
       const newRecord = { ...this.state.editBud };
-      newRecord.amount = parseFloat(newRecord.amount);
-      newRecord.fromAccount = parseInt(newRecord.fromAccount, 10);
-      newRecord.toAccount = parseInt(newRecord.toAccount, 10);
-      newRecord.periodCount = parseInt(newRecord.periodCount, 10);
       newRecord.currency = this.state.displayCurrency;
-      newRecord.delay = parseInt(newRecord.delay, 10);
-      newRecord.rate = parseFloat(newRecord.rate);
       if (budID === 'new') {
         console.log(`Main: adding new record with budID ${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`);
         newRecord.budID = `${Math.max(...this.state.budgetTable.map((v) => parseInt(v.budID, 10))) + 1}`;
@@ -390,9 +412,6 @@ class Main extends React.Component {
       case 'modify': {
         let currentAccountTable = [];
         const newRecord = { ...this.state.editAcct };
-        console.log(newRecord.balanceDate);
-        newRecord.balance = parseFloat(newRecord.balance);
-        newRecord.rate = parseFloat(newRecord.rate);
         if (acctID === 'new') {
           console.log(`Main: adding new account record with acctID ${Math.max(...this.state.accountTable.map((v) => parseInt(v.acctID, 10))) + 1}`);
           newRecord.acctID = `${Math.max(...this.state.accountTable.map((v) => parseInt(v.acctID, 10))) + 1}`;
