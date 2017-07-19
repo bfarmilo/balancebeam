@@ -12,8 +12,6 @@ const ipcRenderer = require('electron').ipcRenderer;
 
 const currentDate = new Date();
 
-const NUM_MONTHS = 3;
-
 const blankBud = {
   budID: '',
   type: 'Expense',
@@ -87,7 +85,8 @@ class Main extends React.Component {
       zeroPos: 0,
       loadingMessage: 'Loading ...',
       displayCurrency: 'CAD',
-      displayBalance: 0
+      displayBalance: 0,
+      monthsToShow: 6
     };
     this.minBalance = 0;
     this.maxBalance = 0;
@@ -151,6 +150,7 @@ class Main extends React.Component {
       account,
       currency,
       (refresh ? oldData : []),
+      this.state.monthsToShow,
       (err, data) => {
         if (err) {
           console.error(err);
@@ -158,7 +158,7 @@ class Main extends React.Component {
           this.minBalance = Math.min(...data.map(v => v.Balance));
           this.maxBalance = Math.max(...data.map(v => v.Balance));
           if (Object.hasOwnProperty.call(account, 'paymentDate')) {
-            const target = createTargetChart(account, NUM_MONTHS);
+            const target = createTargetChart(account);
             this.minBalance = Math.min(...target.map(v => v.Balance), this.minBalance);
             this.maxBalance = Math.max(...target.map(v => v.Balance), this.maxBalance);
           }
@@ -513,11 +513,16 @@ class Main extends React.Component {
         <div >
           {controlArea}
           <ChartArea
-            startBalance={{ txnDate: this.state.account.balanceDate, Balance: this.state.account.balance }}
+            startBalance={{
+              txnDate: this.state.account.balanceDate,
+              Balance: this.state.account.balance
+            }}
             data={this.state.data}
             tickValues={this.state.tickValues}
             zeroPos={this.state.zeroPos}
-            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate') ? createTargetChart(this.state.account, NUM_MONTHS) : ''}
+            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate')
+              ? createTargetChart(this.state.account)
+              : ''}
             showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentDate')}
           />
           <BalanceTable
@@ -547,7 +552,9 @@ class Main extends React.Component {
     }
     return (
       <div>
-        {this.state.loadingMessage !== 'ready' ? <div>{this.state.loadingMessage}</div> : visibleBlocks}
+        {this.state.loadingMessage !== 'ready'
+          ? <div>{this.state.loadingMessage}</div>
+          : visibleBlocks}
       </div>
     );
   }

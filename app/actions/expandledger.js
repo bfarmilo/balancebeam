@@ -2,22 +2,21 @@
 
 import type { ledgerItem, accountItem, budgetItem, customLedgerItem } from './typedefs';
 
-const periodCounts = {
-  Year: 1,
-  Month: 12,
-  Week: 52
-};
 const exchangeRates = {
   USD: 1.26
 };
 
 const USDCAD = exchangeRates.USD;
-const NUM_MONTHS = 8;
 
 const DEBIT = 'DEBIT';
 const CREDIT = 'CREDIT';
 const CAD = 'CAD';
 const USD = 'USD';
+
+const CustomException = (message: string) => {
+  this.name = 'error';
+  this.message = message;
+};
 
 /*
 expandItem takes a budget record and expands it out based on the frequency of repetition.
@@ -72,9 +71,9 @@ function expandItem(
     );
     Account = parseInt(currentAccount.acctID, 10);
     Description = budgetRecord.description;
-    const MAX_ITEMS = budgetRecord.totalCount !== 0
+    const maxItems = budgetRecord.totalCount !== 0
       ? budgetRecord.totalCount
-      : Math.round((NUM_MONTHS / 12) * ((periodCounts[budgetRecord.periodType] / budgetRecord.periodCount) + 1));
+      : 1000;
     let dateOffset = 0;
     if (!isDebit && Object.hasOwnProperty.call(budgetRecord, 'delay')) dateOffset = budgetRecord.delay;
     if (dateOffset !== 0) {
@@ -82,22 +81,27 @@ function expandItem(
         transactionDate.getUTCDate() + dateOffset
       );
     }
-    for (let i = 0;
-      i < (periodCounts[budgetRecord.periodType] / budgetRecord.periodCount && MAX_ITEMS);
-      i += 1) {
+    let i = 0;
+    do {
       if (i > 0) {
-        if (budgetRecord.periodType === 'Year') {
-          transactionDate.setUTCFullYear(
-            transactionDate.getUTCFullYear() + budgetRecord.periodCount
-          );
-        } else if (budgetRecord.periodType === 'Month') {
-          transactionDate.setUTCMonth(
-            transactionDate.getUTCMonth() + budgetRecord.periodCount
-          );
-        } else if (budgetRecord.periodType === 'Week') {
-          transactionDate.setUTCDate(
-            transactionDate.getUTCDate() + (7 * budgetRecord.periodCount)
-          );
+        switch (budgetRecord.periodType) {
+          case 'Year': case 'Years':
+            transactionDate.setUTCFullYear(
+              transactionDate.getUTCFullYear() + budgetRecord.periodCount
+            );
+            break;
+          case 'Month': case 'Months':
+            transactionDate.setUTCMonth(
+              transactionDate.getUTCMonth() + budgetRecord.periodCount
+            );
+            break;
+          case 'Week': case 'Weeks':
+            transactionDate.setUTCDate(
+              transactionDate.getUTCDate() + (7 * budgetRecord.periodCount)
+            );
+            break;
+          default:
+            throw new CustomException('invalid period type, expect Year, Month or Week');
         }
       }
       if (transactionDate >= startDate && transactionDate <= endDate) {
@@ -114,40 +118,43 @@ function expandItem(
         };
         returnArray.push(currentEntry);
       }
+      i += 1;
     }
-  }// now look for matching custom transactions and replace in the ledger table
-  return returnArray.reduce(
-    (result: Array<ledgerItem | customLedgerItem | null>, item: ledgerItem) => {
-      const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
-      if (updated.length > 0) {
-        if (Object.hasOwnProperty.call(updated[0], 'skip')) {
-          return result;
+    while (transactionDate <= endDate && i <= maxItems);
+    // now look for matching custom transactions and replace in the ledger table
+    return returnArray.reduce(
+      (result: Array<ledgerItem | customLedgerItem | null>, item: ledgerItem) => {
+        const updated = customTxnList.filter(txn => txn.txnID === item.txnID);
+        if (updated.length > 0) {
+          if (Object.hasOwnProperty.call(updated[0], 'skip')) {
+            return result;
+          }
+          isDebit = (updated[0].fromAccount === Account);
+          const ledgerDate = new Date(updated[0].txnDate);
+          if (Object.hasOwnProperty.call(updated[0], 'delay') && !isDebit) {
+            ledgerDate.setUTCDate(ledgerDate.getUTCDate() + updated[0].delay);
+          }
+          const newItem: ledgerItem = {
+            txnID: updated[0].txnID,
+            txnDate: ledgerDate.toISOString().split('T')[0],
+            Amount: convertCurrency(
+              updated[0].Amount * (isDebit ? -1 : 1),
+              updated[0].currency,
+              toCurrency
+            ),
+            Account,
+            Description: updated[0].Description,
+            Custom: true,
+            delay: item.delay,
+            rate: 0
+          };
+          result.push(newItem);
+        } else {
+          result.push(item);
         }
-        isDebit = (updated[0].fromAccount === Account);
-        const ledgerDate = new Date(updated[0].txnDate);
-        if (Object.hasOwnProperty.call(updated[0], 'delay') && !isDebit) {
-          ledgerDate.setUTCDate(ledgerDate.getUTCDate() + updated[0].delay);
-        }
-        const newItem: ledgerItem = {
-          txnID: updated[0].txnID,
-          txnDate: ledgerDate.toISOString().split('T')[0],
-          Amount: convertCurrency(
-            updated[0].Amount * (isDebit ? -1 : 1),
-            updated[0].currency,
-            toCurrency
-          ),
-          Account,
-          Description: updated[0].Description,
-          Custom: true,
-          delay: item.delay,
-          rate: 0
-        };
-        result.push(newItem);
-      } else {
-        result.push(item);
-      }
-      return result;
-    }, []);
+        return result;
+      }, []);
+  }
 }
 /*
 convertCurrency converts from the account currency
@@ -221,6 +228,7 @@ function recalculateBalance(
   account: accountItem,
   showCurrency: string,
   refreshData: Array<ledgerItem>,
+  monthsToShow: number,
   callback: (err: Error | null, data: Array<ledgerItem> | null) => void
 ): void {
   let startBalance = 0;
@@ -232,7 +240,7 @@ function recalculateBalance(
     sortLedger(returnData);
     return callback(null, returnData);
   }
-  expandLedger(accountList, budgetList, customTxnList, account, showCurrency, (e, data) => {
+  expandLedger(accountList, budgetList, customTxnList, account, showCurrency, monthsToShow, (e, data) => {
     if (e) {
       return callback(e, null);
     } else if (data !== null) {
@@ -253,6 +261,7 @@ matching the currently displayed account
 @param customTxnList: Array - the array of user-modified transactions
 @param account: Object - the account object we are expanding
 @showCurrency:String - 'USD' or 'CAD' the currency we want to display
+@monthsToShow:number - number of months to include
 
 */
 function expandLedger(
@@ -261,13 +270,14 @@ function expandLedger(
   customTxnList: Array<customLedgerItem>,
   account: accountItem,
   showCurrency: string,
+  monthsToShow: number,
   callback: (Error | null, Array<ledgerItem> | null) => void
 ) {
   const currentDate = new Date(account.balanceDate);
   currentDate.setUTCDate(currentDate.getUTCDate() - 1);
   const lastDate = new Date(
     currentDate.getUTCFullYear(),
-    currentDate.getUTCMonth() + NUM_MONTHS,
+    currentDate.getUTCMonth() + monthsToShow,
     currentDate.getUTCDate()
   );
   const returnLedger = budgetList
@@ -306,7 +316,7 @@ function formatCurrency(dollars: number): string {
 }
 
 module.exports = {
-      recalculateBalance,
-    convertCurrency,
+  recalculateBalance,
+  convertCurrency,
   formatCurrency
 };
