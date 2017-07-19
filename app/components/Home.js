@@ -241,6 +241,9 @@ class Main extends React.Component {
       case 'paymentDate':
         editAcct[dataType] = parseInt(event.target.value, 10);
         break;
+      case 'includeAccount':
+        editAcct[dataType] = !(event.target.value === 'true');
+        break;
       default:
         editAcct[dataType] = event.target.value;
     }

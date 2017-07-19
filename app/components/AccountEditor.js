@@ -31,7 +31,8 @@ const AccountEditor = (props: {
       <td><input className="EditLedger input-small" type="text" name={'new_currency'} value={props.editAcct.currency} onChange={props.handleDataChange} /></td>
       <td><input className="EditLedger input-small" type="text" name={'new_accountType'} value={props.editAcct.accountType} onChange={props.handleDataChange} /></td>
       <td><input className="EditLedger input-small" type="number" name={'new_rate'} value={props.editAcct.rate} onChange={props.handleDataChange} /></td>
-      <td><input name={'new_includeAccount'} type="checkbox" value={props.editAcct.includeAccount} onChange={props.handleDataChange} /></td>
+      <td>{props.editAcct.includeAccount ? <input name={'new_includeAccount'} type="checkbox" value={props.editAcct.includeAccount} checked onChange={props.handleDataChange} />
+        : <input name={'new_includeAccount'} type="checkbox" value={props.editAcct.includeAccount} onChange={props.handleDataChange} />}</td>
       <td className="EditBox"><button name={'new_modify'} type="button" onClick={props.editEntry}>Add</button></td>
     </tr >
   );
@@ -68,7 +69,11 @@ const AccountEditor = (props: {
               currencyCell = <td><input className="EditLedger input-small" type="text" name={`${val.acctID}_currency`} value={props.editAcct.currency} onChange={props.handleDataChange} /></td>;
               typeCell = <td><input className="EditLedger input-small" type="text" name={`${val.acctID}_accountType`} value={props.editAcct.accountType} onChange={props.handleDataChange} /></td>;
               rateCell = <td><input className="EditLedger input-small" disabled={val.accountType === 'loan'} type="number" name={`${val.acctID}_rate`} value={val.accountType === 'loan' ? 0 : props.editAcct.rate} onChange={props.handleDataChange} /></td>;
-              showCell = <td><input name={`${val.acctID}_includeAccount`} type="checkbox" value={props.editAcct.includeAccount} onChange={props.handleDataChange} /></td>;
+              showCell = (
+                <td>
+                  <input name={`${val.acctID}_includeAccount`} type="checkbox" value={props.editAcct.includeAccount} checked={props.editAcct.includeAccount} onChange={props.handleDataChange} />
+                </td>
+              );
               buttonCell = <button name={`${val.acctID}_modify`} type="button" onClick={props.editEntry}><i id="modify" className="fa fa-check fa-fw" aria-hidden="true" /></button>;
               resetButton = <button name={`${val.acctID}_clear`} id="clear" type="button" onClick={props.editEntry}><i id="clear" className="fa fa-undo fa-fw" aria-hidden="true" /></button>;
             }
