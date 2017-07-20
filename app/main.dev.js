@@ -102,7 +102,9 @@ app.on('ready', async () => {
       })
       .catch(err => {
         if (mainWindow) {
-          mainWindow.webContents.send('message', `Error with getting initial data ${err.name}: ${err.message}`);
+          mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
+
+          mainWindow.webContents.send('message', 'ready');
         }
       });
   });
@@ -122,7 +124,7 @@ const updateAccounts = (target) => {
       console.error(stderr);
       if (err || stderr) {
         if (mainWindow) {
-          mainWindow.webContents.send('message', `Error with executing updateall ${err.name}: ${err.message}`);
+          mainWindow.webContents.send('message', 'Error executing updateall');
         }
         return reject(stderr);
       }
@@ -176,6 +178,11 @@ if (process.env.LOCALAPPDATA) {
     });
 }
 // event listeners
+
+ipcMain.on('recover', e => {
+  console.log('Main: received error OK window', e.sender.currentIndex);
+  if (mainWindow) mainWindow.webContents.send('message', 'ready');
+});
 
 ipcMain.on('update', e => {
   console.log('Main: received update request from window', e.sender.currentIndex);

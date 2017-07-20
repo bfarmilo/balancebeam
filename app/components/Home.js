@@ -472,6 +472,12 @@ class Main extends React.Component {
 
   render() {
     let visibleBlocks;
+    const errorBlock = (
+      <div>
+        ${this.state.loadingMessage}
+        <button type="button" onClick={ipcRenderer.send('recover')}>Retry</button>
+      </div>
+    );
     const controlArea = (
       <ControlArea
         accountTable={this.state.accountTable}
@@ -553,7 +559,7 @@ class Main extends React.Component {
     return (
       <div>
         {this.state.loadingMessage !== 'ready'
-          ? <div>{this.state.loadingMessage}</div>
+          ? errorBlock
           : visibleBlocks}
       </div>
     );

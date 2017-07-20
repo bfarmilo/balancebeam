@@ -1,3 +1,8 @@
+.displayText{
+  display: flex;
+  color: white;
+}
+
 .toggleButtonGroup{
   display: flex;
   margin: 10px auto;
@@ -21,13 +26,13 @@
 .toggleButton:hover {
   background: #0079a5;
 }
-.toggleButton:active,
-.toggleButton:focus {
+
+.toggleButton:disabled {
   background: #002e3f;
   outline: none;
 }
 .toggleButton {
-  min-width: 8em;
+  min-width: 4em;
 }
 
 /* Custom dropdown */
