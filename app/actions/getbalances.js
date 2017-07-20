@@ -17,49 +17,56 @@ function queueCommands(commandList) {
     const nightmare = Nightmare({
       electronPath,
       show: testMode,
-      openDevTools: testMode
+      // openDevTools: testMode
     });
-    const evalObj = commandList[5].reduce(val => val);
-    nightmare
-      .goto(commandList[1].N_GOTO)
-      .wait(commandList[4].N_CLICK)
-      .type(commandList[2].N_TYPE.target, commandList[2].N_TYPE.value)
-      .type(commandList[3].N_TYPE.target, commandList[3].N_TYPE.value)
-      .click(commandList[4].N_CLICK)
-      .then(() => {
-        if (Object.prototype.hasOwnProperty.call(evalObj.action.N_EVALUATE, 'wait')) return nightmare.wait(7000);
-        return nightmare;
-      })
-      .catch(error => {
-        console.error(`Error in waiting for account ${evalObj.acctID}`);
-        return reject(error);
-      })
-      .then(() => nightmare
-        .wait(evalObj.action.N_EVALUATE.selector)
-        .evaluate((pattern, items) => {
-          const matchVal = new RegExp(pattern.match, 'g');
-          // change to an array input
-          const balances = items.map((value) => {
-            const item = value.action.N_EVALUATE;
-            const acctID = value.acctID;
-            const balance = parseFloat(
-              document.querySelector(item.selector)[item.value].replace(matchVal, item.quantity)
-            );
-            const currency =
-              document.querySelector(item.selector)[item.value].replace(matchVal, item.currency);
-            // console.log({ acctID, balance, currency });
-            return ({ acctID, balance, currency });
-          });
-          return balances;
-        }, commandList[0].N_PATTERN, commandList[5])
-        .end()
-      )
-      .then((pageData) => resolve(pageData))
-      .catch(error => {
-        console.error(`Error getting balance for account ${evalObj.acctID}`);
-        return reject(error);
-      })
-      .catch(error => reject(error));
+    console.log(commandList);
+    const evalObj = commandList[5].length > 0 ? commandList[5].reduce(val => val) : false;
+    if (evalObj) {
+      nightmare
+        .goto(commandList[1].N_GOTO)
+        .wait(commandList[4].N_CLICK)
+        .type(commandList[2].N_TYPE.target, commandList[2].N_TYPE.value)
+        .type(commandList[3].N_TYPE.target, commandList[3].N_TYPE.value)
+        .click(commandList[4].N_CLICK)
+        .then(() => {
+          if (Object.prototype.hasOwnProperty.call(evalObj.action.N_EVALUATE, 'wait')) return nightmare.wait(7000);
+          return nightmare;
+        })
+        .catch(error => {
+          console.error(`Error in waiting for account ${evalObj.acctID}`);
+          return reject(error);
+        })
+        .then(() => nightmare
+          .wait(evalObj.action.N_EVALUATE.selector)
+          .evaluate((pattern, items) => {
+            const matchVal = new RegExp(pattern.match, 'g');
+            // change to an array input
+            const balances = items.map((value) => {
+              const item = value.action.N_EVALUATE;
+              const acctID = value.acctID;
+              const balance = parseFloat(
+                document.querySelector(item.selector)[item.value].replace(matchVal, item.quantity)
+              );
+              const currency =
+                document.querySelector(item.selector)[item.value].replace(matchVal, item.currency);
+              // console.log({ acctID, balance, currency });
+              return ({ acctID, balance, currency });
+            });
+            return balances;
+          }, commandList[0].N_PATTERN, commandList[5])
+          .end()
+        )
+        .then((pageData) => {
+          console.log('pageData:', pageData);
+          return resolve(pageData);
+        })
+        .catch(error => {
+          console.error(`Error getting balance for account ${evalObj.acctID}`);
+          return reject(error);
+        })
+        .catch(error => reject(error));
+    }
+    return resolve({ acctID: '99', balance: 0, currency: 'CAD' });
   });
 }
 
@@ -105,10 +112,13 @@ return callback(null, 'nightmare done')
 
 function updateTable(accounts, updates) {
   const todaysDate = new Date();
+  console.log(
+    updates
+  );
   return accounts.map((account) => {
     const currentAccount = account;
     const check = updates
-      .reduce((accum, current) => accum.concat(current))
+      .reduce((accum, current) => accum.concat(current), [])
       .filter(item => account.acctID === item.acctID);
     if (check.length > 0) {
       console.log('check value', check.reduce(value => value));
@@ -128,11 +138,14 @@ function getAllAccounts(sequences) {
   return Promise.all(sequences.map(queueCommands));
 }
 
+// @param: updatePath:array<object> an array of all update path references
+
 function getAllUpdates(updatePath, accountList, isTest = false) {
   return new Promise((resolve, reject) => {
     testMode = isTest;
     const allSequences = updatePath
       .map(val => val.updateRef) // first make an array of updateRefs
+      .filter(ref => accountList.map(acct => acct.updateRef).includes(ref))
       .map(acct => (
         updatePath.reduce((sequence, account) => {
           // for a given updateRef, push a new array with the global updateSequences
