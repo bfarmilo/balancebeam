@@ -157,7 +157,7 @@ class Main extends React.Component {
         } else {
           this.minBalance = Math.min(...data.map(v => v.Balance));
           this.maxBalance = Math.max(...data.map(v => v.Balance));
-          if (Object.hasOwnProperty.call(account, 'paymentDate')) {
+          if (Object.hasOwnProperty.call(account, 'paymentBal')) {
             const target = createTargetChart(account);
             this.minBalance = Math.min(...target.map(v => v.Balance), this.minBalance);
             this.maxBalance = Math.max(...target.map(v => v.Balance), this.maxBalance);
@@ -475,7 +475,7 @@ class Main extends React.Component {
     const errorBlock = (
       <div>
         ${this.state.loadingMessage}
-        <button type="button" onClick={ipcRenderer.send('recover')}>Retry</button>
+        <button type="button" onClick={() => ipcRenderer.send('recover')}>Retry</button>
       </div>
     );
     const controlArea = (
@@ -526,10 +526,10 @@ class Main extends React.Component {
             data={this.state.data}
             tickValues={this.state.tickValues}
             zeroPos={this.state.zeroPos}
-            target={Object.hasOwnProperty.call(this.state.account, 'paymentDate')
+            target={Object.hasOwnProperty.call(this.state.account, 'paymentBal')
               ? createTargetChart(this.state.account)
               : ''}
-            showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentDate')}
+            showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentBal')}
           />
           <BalanceTable
             balance={this.state.displayBalance}

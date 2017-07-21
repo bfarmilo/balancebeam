@@ -19,54 +19,48 @@ function queueCommands(commandList) {
       show: testMode,
       // openDevTools: testMode
     });
-    console.log(commandList);
     const evalObj = commandList[5].length > 0 ? commandList[5].reduce(val => val) : false;
-    if (evalObj) {
-      nightmare
-        .goto(commandList[1].N_GOTO)
-        .wait(commandList[4].N_CLICK)
-        .type(commandList[2].N_TYPE.target, commandList[2].N_TYPE.value)
-        .type(commandList[3].N_TYPE.target, commandList[3].N_TYPE.value)
-        .click(commandList[4].N_CLICK)
-        .then(() => {
-          if (Object.prototype.hasOwnProperty.call(evalObj.action.N_EVALUATE, 'wait')) return nightmare.wait(7000);
-          return nightmare;
-        })
-        .catch(error => {
-          console.error(`Error in waiting for account ${evalObj.acctID}`);
-          return reject(error);
-        })
-        .then(() => nightmare
-          .wait(evalObj.action.N_EVALUATE.selector)
-          .evaluate((pattern, items) => {
-            const matchVal = new RegExp(pattern.match, 'g');
-            // change to an array input
-            const balances = items.map((value) => {
-              const item = value.action.N_EVALUATE;
-              const acctID = value.acctID;
-              const balance = parseFloat(
-                document.querySelector(item.selector)[item.value].replace(matchVal, item.quantity)
-              );
-              const currency =
-                document.querySelector(item.selector)[item.value].replace(matchVal, item.currency);
-              // console.log({ acctID, balance, currency });
-              return ({ acctID, balance, currency });
-            });
-            return balances;
-          }, commandList[0].N_PATTERN, commandList[5])
-          .end()
-        )
-        .then((pageData) => {
-          console.log('pageData:', pageData);
-          return resolve(pageData);
-        })
-        .catch(error => {
-          console.error(`Error getting balance for account ${evalObj.acctID}`);
-          return reject(error);
-        })
-        .catch(error => reject(error));
-    }
-    return resolve({ acctID: '99', balance: 0, currency: 'CAD' });
+
+    nightmare
+      .goto(commandList[1].N_GOTO)
+      .wait(commandList[4].N_CLICK)
+      .type(commandList[2].N_TYPE.target, commandList[2].N_TYPE.value)
+      .type(commandList[3].N_TYPE.target, commandList[3].N_TYPE.value)
+      .click(commandList[4].N_CLICK)
+      .then(() => {
+        if (Object.prototype.hasOwnProperty.call(evalObj.action.N_EVALUATE, 'wait')) return nightmare.wait(7000);
+        return nightmare;
+      })
+      .catch(error => {
+        console.error(`Error in waiting for account ${evalObj.acctID}`);
+        return reject(error);
+      })
+      .then(() => nightmare
+        .wait(evalObj.action.N_EVALUATE.selector)
+        .evaluate((pattern, items) => {
+          const matchVal = new RegExp(pattern.match, 'g');
+          // change to an array input
+          const balances = items.map((value) => {
+            const item = value.action.N_EVALUATE;
+            const acctID = value.acctID;
+            const balance = parseFloat(
+              document.querySelector(item.selector)[item.value].replace(matchVal, item.quantity)
+            );
+            const currency =
+              document.querySelector(item.selector)[item.value].replace(matchVal, item.currency);
+            // console.log({ acctID, balance, currency });
+            return ({ acctID, balance, currency });
+          });
+          return balances;
+        }, commandList[0].N_PATTERN, commandList[5])
+        .end()
+      )
+      .then((pageData) => resolve(pageData))
+      .catch(error => {
+        console.error(`Error getting balance for account ${evalObj.acctID}`);
+        return reject(error);
+      })
+      .catch(error => reject(error));
   });
 }
 
@@ -111,23 +105,29 @@ return callback(null, 'nightmare done')
 
 
 function updateTable(accounts, updates) {
+  // accounts is the list of all accounts
+  // updates is an array of {acctID, balance, currency}
   const todaysDate = new Date();
-  console.log(
-    updates
-  );
   return accounts.map((account) => {
     const currentAccount = account;
     const check = updates
-      .reduce((accum, current) => accum.concat(current), [])
+      .reduce((accum, current) => accum.concat(current))
       .filter(item => account.acctID === item.acctID);
     if (check.length > 0) {
       console.log('check value', check.reduce(value => value));
-      currentAccount.balance = check.reduce(value => value).balance;
+      const newBalance = check.reduce(value => value).balance;
+      if (Object.hasOwnProperty.call(currentAccount, 'paymentBal')
+        && currentAccount.balance < (newBalance - 500)) {
+        // if the new balance is $500 more than the old, likely a payment was made
+        // so update paymentBal and paymentDate
+        currentAccount.paymentBal = currentAccount.balance;
+        currentAccount.paymentDate = todaysDate.toISOString().split('T'[0]);
+      }
+      currentAccount.balance = newBalance;
       currentAccount.currency = check.reduce(value => value).currency;
       currentAccount.balanceDate = todaysDate.toISOString().split('T')[0];
-      if (Object.hasOwnProperty.call(currentAccount, 'paymentDate')
-        && todaysDate.getDate() === currentAccount.paymentDate) {
-        currentAccount.paymentBal = currentAccount.balance;
+      if (todaysDate === new Date(todaysDate.getUTCFullYear(), todaysDate.getUTCMonth(), 0)) {
+        currentAccount.monthEndBal = newBalance;
       }
     }
     return currentAccount;
@@ -168,7 +168,6 @@ function getAllUpdates(updatePath, accountList, isTest = false) {
       )
       );
     // console.log(allSequences);
-    console.log('GetAllBalances: getting data for all accounts');
     getAllAccounts(allSequences)
       .then(results => resolve(updateTable(accountList, results)))
       .catch(error => {

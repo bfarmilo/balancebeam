@@ -128,6 +128,7 @@ const updateAccounts = (target) => {
         }
         return reject(stderr);
       }
+      console.log('updateAccounts: ', stdout);
       return resolve('accountList');
     });
   })
