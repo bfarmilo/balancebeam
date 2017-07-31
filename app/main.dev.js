@@ -19,6 +19,8 @@ const exec = require('child_process').exec;
 let checkAccount = true;
 
 let dropBoxPath = '';
+const openAccounts = new Map();
+let pathArray = [];
 
 let mainWindow = null;
 
@@ -109,6 +111,17 @@ app.on('ready', async () => {
       });
   });
 
+  mainWindow.on('close', (e) => {
+    // catch a 'close' of the main window and put all of the other windows down first
+    console.log(`\x1b[32mMain: closing application${openAccounts.size > 0 ? `, first closing ${openAccounts.size} Exhibits` : ''}`);
+    if (openAccounts.size > 0) {
+      openAccounts.forEach((win, acct) => {
+        console.log(`\x1b[32mMain: closing ${acct}`);
+        win.close();
+      });
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -121,7 +134,7 @@ app.on('ready', async () => {
 const updateAccounts = (target) => {
   new Promise((resolve, reject) => {
     exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
-      console.error(stderr);
+      console.error(`\x1b[31m${stderr}\x1b[0m`);
       if (err || stderr) {
         if (mainWindow) {
           mainWindow.webContents.send('message', 'Error executing updateall');
@@ -138,7 +151,7 @@ const updateAccounts = (target) => {
       return 'done';
     })
     .catch(err => {
-      console.error(err);
+      console.error(`\x1b[31m${err}\x1b[0m`);
       if (mainWindow) {
         mainWindow.webContents.send('message', `Error updating Accounts ${JSON.stringify(err)}`);
       }
@@ -147,14 +160,14 @@ const updateAccounts = (target) => {
 
 const getData = (dataType) => new Promise((resolve, reject) => {
   // mainWindow.webContents.send('message', `Loading ${dataType} data`);
-  console.log(`Main: Loading ${dropBoxPath}\\${dataType}.json`);
+  console.log(`\x1b[32mMain: Loading ${dropBoxPath}\\${dataType}.json`);
   fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
     .then(resultData => {
-      console.log(`Main: Good ${dataType} data`);
+      console.log(`\x1b[32mMain: Good ${dataType} data\x1b[0m`);
       return resolve({ dataType, value: resultData[dataType] });
     })
     .catch(err1 => {
-      console.error(`Error getting ${dataType} data: ${err1}`);
+      console.error(`\x1b[31mError getting ${dataType} data: ${err1}\x1b[0m`);
       return reject(err1);
     });
 });
@@ -164,13 +177,59 @@ const getAllData = (target) => {
   return Promise.all(['budgetList', 'customLedger', 'accountList'].map(getData));
 };
 
+const openAccountWindow = (updateRef, acctID) => {
+  // takes a file argument and opens a window
+  // also stops the title from changing
+  const viewerWindow = new BrowserWindow({
+    width: 1024,
+    height: 800,
+    x: 50,
+    y: 50,
+    autoHideMenuBar: true,
+    webPreferences: {
+      webSecurity: false,
+      nodeIntegration: false
+    }
+  });
+
+  const entry = pathArray
+    .filter(val => val.updateRef === updateRef).reduce(val => val).updateSequence;
+
+  const file = entry[1].N_GOTO;
+  const login = entry[2].N_TYPE;
+  const pwd = entry[3].N_TYPE;
+
+  // When the account is closed, delete it from the map of open accounts
+  viewerWindow.on('closed', () => {
+    console.log(`\x1b[32mMain: window closed: ${acctID}\x1b[0m`);
+    openAccounts.delete(`${acctID}`);
+  });
+
+  viewerWindow.webContents.once('did-finish-load', e => {
+    console.log(`\x1b[32mfinished Loading, trying ${login.target} and ${pwd.target}}\x1b[0m`);
+    viewerWindow.webContents.executeJavaScript(
+      `document.querySelector("${login.target}").value = "${login.value}"; document.querySelector("${pwd.target}").value = "${pwd.value}"`
+    );
+  });
+
+  // now open the window
+  viewerWindow.loadURL(`${file}`);
+  viewerWindow.webContents.openDevTools();
+  openAccounts.set(`${acctID}`, viewerWindow);
+};
+
 // on startup
 
 if (process.env.LOCALAPPDATA) {
   fse.readJSON(`${process.env.LOCALAPPDATA}//Dropbox//info.json`)
     .then(dropbox => {
       dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
-      return console.log(`Main: Good DropBox Path:${dropBoxPath}`);
+      return console.log(`\x1b[32mMain: Good DropBox Path:${dropBoxPath}`);
+    })
+    .then(() => fse.readJSON(`${dropBoxPath}\\config.json`))
+    .then(config => {
+      pathArray = config.config.updatePath;
+      return console.log('\x1b[32mMain: got config file\x1b[0m');
     })
     .catch(error => {
       if (mainWindow) {
@@ -181,17 +240,17 @@ if (process.env.LOCALAPPDATA) {
 // event listeners
 
 ipcMain.on('recover', e => {
-  console.log('Main: received error OK window', e.sender.currentIndex);
+  console.log('\x1b[33mMain: received error OK window\x1b[0m', e.sender.currentIndex);
   if (mainWindow) mainWindow.webContents.send('message', 'ready');
 });
 
 ipcMain.on('update', e => {
-  console.log('Main: received update request from window', e.sender.currentIndex);
+  console.log('\x1b[33mMain: received update request from window\x1b[0m', e.sender.currentIndex);
   if (mainWindow) updateAccounts(mainWindow.webContents);
 });
 
 ipcMain.on('writeOutput', (e, dataType, value) => {
-  console.log(`Main: received call to update ${dataType} from window`, e.sender.currentIndex);
+  console.log(`\x1b[33mMain: received call to update ${dataType} from window\x1b[0m`, e.sender.currentIndex);
   fse.writeFile(`${dropBoxPath}\\${dataType}.json`, `{ "${dataType}": ${JSON.stringify(value)}}`, err => {
     if (err) {
       if (mainWindow) {
@@ -202,7 +261,7 @@ ipcMain.on('writeOutput', (e, dataType, value) => {
 });
 
 ipcMain.on('updateLedger', e => {
-  console.log('Main: received call to update ledger from window', e.sender.currentIndex);
+  console.log('\x1b[33mMain: received call to update ledger from window\x1b[0m', e.sender.currentIndex);
   getData('customLedger')
     .then(results => {
       if (mainWindow) {
@@ -217,3 +276,19 @@ ipcMain.on('updateLedger', e => {
       }
     });
 });
+
+ipcMain.on('open_account', (event, acctID, updateRef) => {
+  console.log(`\x1b[33mMain: received call to open window for ${acctID}\x1b[0m`);
+  let alreadyOpen = false;
+  // check to see if window already opened - if so just give it the focus
+  if (openAccounts.has(`${acctID}`)) {
+    console.log(`\x1b[32mMain: match found with id ${openAccounts.get(`${acctID}`).id}\x1b[0m`);
+    BrowserWindow.fromId(openAccounts.get(`${acctID}`).id).focus();
+    alreadyOpen = true;
+  }
+  if (!alreadyOpen) {
+    // else open new window
+    openAccountWindow(updateRef, acctID);
+  }
+});
+

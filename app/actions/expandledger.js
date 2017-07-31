@@ -3,7 +3,7 @@
 import type { ledgerItem, accountItem, budgetItem, customLedgerItem } from './typedefs';
 
 const exchangeRates = {
-  USD: 1.26
+  USD: 1.23
 };
 
 const USDCAD = exchangeRates.USD;

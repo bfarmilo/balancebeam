@@ -135,7 +135,7 @@ function updateTable(accounts, updates) {
 }
 
 function getAllAccounts(sequences) {
-  return Promise.all(sequences.map(queueCommands));
+  return Promise.all(sequences.map(queueCommands).map(p => p.catch(e => e)));
 }
 
 // @param: updatePath:array<object> an array of all update path references
@@ -145,7 +145,9 @@ function getAllUpdates(updatePath, accountList, isTest = false) {
     testMode = isTest;
     const allSequences = updatePath
       .map(val => val.updateRef) // first make an array of updateRefs
-      .filter(ref => accountList.map(acct => acct.updateRef).includes(ref))
+      .filter(ref => accountList
+        .map(acct => (Object.hasOwnProperty.call(acct, 'updateSequence') ? acct.updateRef : 'skip'))
+        .includes(ref)) // filter out any unused refs or refs with no updateSequence
       .map(acct => (
         updatePath.reduce((sequence, account) => {
           // for a given updateRef, push a new array with the global updateSequences
@@ -156,9 +158,9 @@ function getAllUpdates(updatePath, accountList, isTest = false) {
           .concat(// then for each matching account, add the evaluate command in a nested array
           [
             accountList.reduce((result, item) => {
-              // look for an updateRef key, if present and it matches,
+              // look for an updateSequence key, if present and the updateRef matches,
               // push the updateSequence and acctID
-              if (Object.prototype.hasOwnProperty.call(item, 'updateRef') && item.updateRef === acct) {
+              if (Object.prototype.hasOwnProperty.call(item, 'updateSequence') && item.updateRef === acct) {
                 result.push({ action: item.updateSequence[0], acctID: item.acctID });
               }
               return result;
@@ -169,7 +171,12 @@ function getAllUpdates(updatePath, accountList, isTest = false) {
       );
     // console.log(allSequences);
     getAllAccounts(allSequences)
-      .then(results => resolve(updateTable(accountList, results)))
+      .then(results => resolve(
+        updateTable(
+          accountList,
+          results.filter(val => !(val instanceof Error || typeof val === 'string'))
+        )
+      ))
       .catch(error => {
         console.error('Error in allAccounts');
         return reject(error);

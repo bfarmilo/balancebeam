@@ -3,6 +3,10 @@
   color: white;
 }
 
+.toggleButtonWarn{
+  background: darkred;
+}
+
 .toggleButtonGroup{
   display: flex;
   margin: 10px auto;

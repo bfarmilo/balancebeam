@@ -101,6 +101,7 @@ class Main extends React.Component {
     this.editAccountRow = this.editAccountRow.bind(this);
     this.handleAccountDataChange = this.handleAccountDataChange.bind(this);
     this.viewAccounts = this.viewAccounts.bind(this);
+    this.openAccount = this.openAccount.bind(this);
   }
 
   componentWillMount() {
@@ -462,6 +463,12 @@ class Main extends React.Component {
     }
   }
 
+  openAccount() {
+    if (Object.hasOwnProperty.call(this.state.account, 'updateRef')) {
+      ipcRenderer.send('open_account', this.state.account.acctID, this.state.account.updateRef);
+    }
+  }
+
   viewAccounts() {
     if (!this.state.accountMode) {
       this.setState({ accountMode: true, editAcct: blankAcct });
@@ -483,7 +490,7 @@ class Main extends React.Component {
         accountTable={this.state.accountTable}
         account={this.state.account}
         selectAccount={this.changeAccount}
-        updateBalance={() => ipcRenderer.send('update')}
+        updateBalance={this.openAccount}
         editBudget={this.toggleShowBudget}
         viewBudget={!this.state.chartMode}
         updateLedger={this.viewAccounts} // () => ipcRenderer.send('updateLedger')

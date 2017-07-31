@@ -18,12 +18,13 @@ const ControlArea = (props: {
   viewAccount: boolean,
   maxChars: number
 }) => {
+  const remainingBal = (props.account.balance - props.account.paymentBal) + props.account.targetSpend;
   const creditCard = (
     <div>
-      <div className={styles.toggleButton}>
-        Available until the {props.account.paymentDate}th: ${((props.account.balance - props.account.paymentBal) + props.account.targetSpend).toFixed(2)}
+      <div className={remainingBal < 0 ? `${styles.toggleButtonWarn} ${styles.toggleButton}` : `${styles.toggleButton}`} disabled={props.viewBudget || props.viewAccount}>
+        Available until the {props.account.paymentDate}th: ${remainingBal.toFixed(2)}
       </div>
-      <div className={styles.toggleButton}>
+      <div className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount}>
         Target: ${props.account.targetSpend}
       </div>
     </div>
@@ -53,7 +54,7 @@ const ControlArea = (props: {
         </select>
       </span>
       <div className={styles.buttonGroup}>
-        <button type="button" className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount} onClick={props.updateBalance}>{props.account.balanceDate} <i className="fa fa-undo fa-fw" /></button>
+        <button type="button" className={styles.toggleButton} disabled={!Object.hasOwnProperty.call(props.account, 'updateRef')} onClick={props.updateBalance}>{props.account.balanceDate} <i className="fa fa-external-link fa-fw" /></button>
         <button type="button" className={styles.toggleButton} disabled={props.viewAccount} onClick={props.editBudget}>{props.viewBudget ? 'View Chart' : 'Edit Budget'}</button>
         <button type="button" className={styles.toggleButton} disabled={props.viewBudget} onClick={props.updateLedger}>Edit Accounts</button>
         <button type="button" className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount} onClick={props.changeCurr}>{props.viewCurr}</button>
