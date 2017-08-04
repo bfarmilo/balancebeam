@@ -13,6 +13,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import fse from 'fs-extra';
 import MenuBuilder from './menu';
+import chalk from 'chalk';
 
 const exec = require('child_process').exec;
 
@@ -99,7 +100,7 @@ app.on('ready', async () => {
           checkAccount = false;
           if (mainWindow) updateAccounts(mainWindow.webContents);
         }
-        console.log('all promises resolved');
+        console.log(chalk.green('all promises resolved'));
         return 'done';
       })
       .catch(err => {
@@ -113,10 +114,10 @@ app.on('ready', async () => {
 
   mainWindow.on('close', (e) => {
     // catch a 'close' of the main window and put all of the other windows down first
-    console.log(`\x1b[32mMain: closing application${openAccounts.size > 0 ? `, first closing ${openAccounts.size} Exhibits` : ''}`);
+    console.log(chalk.green(`Main: closing application${openAccounts.size > 0 ? `, first closing ${openAccounts.size} Exhibits` : ''}`));
     if (openAccounts.size > 0) {
       openAccounts.forEach((win, acct) => {
-        console.log(`\x1b[32mMain: closing ${acct}`);
+        console.log(chalk.green(`Main: closing ${acct}`));
         win.close();
       });
     }
@@ -134,14 +135,14 @@ app.on('ready', async () => {
 const updateAccounts = (target) => {
   new Promise((resolve, reject) => {
     exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
-      console.error(`\x1b[31m${stderr}\x1b[0m`);
+      console.error(chalk.red(`${stderr}`));
       if (err || stderr) {
         if (mainWindow) {
           mainWindow.webContents.send('message', 'Error executing updateall');
         }
         return reject(stderr);
       }
-      console.log('updateAccounts: ', stdout);
+      console.log(chalk.green('updateAccounts: '), stdout);
       return resolve('accountList');
     });
   })
@@ -151,7 +152,7 @@ const updateAccounts = (target) => {
       return 'done';
     })
     .catch(err => {
-      console.error(`\x1b[31m${err}\x1b[0m`);
+      console.error(chalk.red(`${err}`));
       if (mainWindow) {
         mainWindow.webContents.send('message', `Error updating Accounts ${JSON.stringify(err)}`);
       }
@@ -160,14 +161,14 @@ const updateAccounts = (target) => {
 
 const getData = (dataType) => new Promise((resolve, reject) => {
   // mainWindow.webContents.send('message', `Loading ${dataType} data`);
-  console.log(`\x1b[32mMain: Loading ${dropBoxPath}\\${dataType}.json`);
+  console.log(chalk.green(`Main: Loading ${dropBoxPath}\\${dataType}.json`));
   fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
     .then(resultData => {
-      console.log(`\x1b[32mMain: Good ${dataType} data\x1b[0m`);
+      console.log(chalk.green(`Main: Good ${dataType} data`));
       return resolve({ dataType, value: resultData[dataType] });
     })
     .catch(err1 => {
-      console.error(`\x1b[31mError getting ${dataType} data: ${err1}\x1b[0m`);
+      console.error(chalk.red(`Error getting ${dataType} data: ${err1}`));
       return reject(err1);
     });
 });
@@ -201,12 +202,12 @@ const openAccountWindow = (updateRef, acctID) => {
 
   // When the account is closed, delete it from the map of open accounts
   viewerWindow.on('closed', () => {
-    console.log(`\x1b[32mMain: window closed: ${acctID}\x1b[0m`);
+    console.log(chalk.green(`Main: window closed: ${acctID}`));
     openAccounts.delete(`${acctID}`);
   });
 
   viewerWindow.webContents.once('did-finish-load', e => {
-    console.log(`\x1b[32mfinished Loading, trying ${login.target} and ${pwd.target}}\x1b[0m`);
+    console.log(chalk.green(`finished Loading, trying ${login.target} and ${pwd.target}}`));
     viewerWindow.webContents.executeJavaScript(
       `document.querySelector("${login.target}").value = "${login.value}"; document.querySelector("${pwd.target}").value = "${pwd.value}"`
     );
@@ -214,7 +215,7 @@ const openAccountWindow = (updateRef, acctID) => {
 
   // now open the window
   viewerWindow.loadURL(`${file}`);
-  viewerWindow.webContents.openDevTools();
+  // viewerWindow.webContents.openDevTools();
   openAccounts.set(`${acctID}`, viewerWindow);
 };
 
@@ -224,12 +225,12 @@ if (process.env.LOCALAPPDATA) {
   fse.readJSON(`${process.env.LOCALAPPDATA}//Dropbox//info.json`)
     .then(dropbox => {
       dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
-      return console.log(`\x1b[32mMain: Good DropBox Path:${dropBoxPath}`);
+      return console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
     })
     .then(() => fse.readJSON(`${dropBoxPath}\\config.json`))
     .then(config => {
       pathArray = config.config.updatePath;
-      return console.log('\x1b[32mMain: got config file\x1b[0m');
+      return console.log(chalk.green('Main: got config file'));
     })
     .catch(error => {
       if (mainWindow) {
@@ -240,17 +241,17 @@ if (process.env.LOCALAPPDATA) {
 // event listeners
 
 ipcMain.on('recover', e => {
-  console.log('\x1b[33mMain: received error OK window\x1b[0m', e.sender.currentIndex);
+  console.log(chalk.green('Main: received error OK window'), e.sender.currentIndex);
   if (mainWindow) mainWindow.webContents.send('message', 'ready');
 });
 
 ipcMain.on('update', e => {
-  console.log('\x1b[33mMain: received update request from window\x1b[0m', e.sender.currentIndex);
+  console.log(chalk.green('Main: received update request from window'), e.sender.currentIndex);
   if (mainWindow) updateAccounts(mainWindow.webContents);
 });
 
 ipcMain.on('writeOutput', (e, dataType, value) => {
-  console.log(`\x1b[33mMain: received call to update ${dataType} from window\x1b[0m`, e.sender.currentIndex);
+  console.log(chalk.green(`Main: received call to update ${dataType} from window`), e.sender.currentIndex);
   fse.writeFile(`${dropBoxPath}\\${dataType}.json`, `{ "${dataType}": ${JSON.stringify(value)}}`, err => {
     if (err) {
       if (mainWindow) {
@@ -261,7 +262,7 @@ ipcMain.on('writeOutput', (e, dataType, value) => {
 });
 
 ipcMain.on('updateLedger', e => {
-  console.log('\x1b[33mMain: received call to update ledger from window\x1b[0m', e.sender.currentIndex);
+  console.log(chalk.green('Main: received call to update ledger from window'), e.sender.currentIndex);
   getData('customLedger')
     .then(results => {
       if (mainWindow) {
@@ -278,11 +279,11 @@ ipcMain.on('updateLedger', e => {
 });
 
 ipcMain.on('open_account', (event, acctID, updateRef) => {
-  console.log(`\x1b[33mMain: received call to open window for ${acctID}\x1b[0m`);
+  console.log(chalk.green(`Main: received call to open window for ${acctID}`));
   let alreadyOpen = false;
   // check to see if window already opened - if so just give it the focus
   if (openAccounts.has(`${acctID}`)) {
-    console.log(`\x1b[32mMain: match found with id ${openAccounts.get(`${acctID}`).id}\x1b[0m`);
+    console.log(chalk.green(`Main: match found with id ${openAccounts.get(`${acctID}`).id}`));
     BrowserWindow.fromId(openAccounts.get(`${acctID}`).id).focus();
     alreadyOpen = true;
   }

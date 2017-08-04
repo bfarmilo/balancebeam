@@ -114,7 +114,7 @@ function updateTable(accounts, updates) {
       .reduce((accum, current) => accum.concat(current))
       .filter(item => account.acctID === item.acctID);
     if (check.length > 0) {
-      console.log('check value', check.reduce(value => value));
+      console.log('\x1b[32mcheck value:\x1b[0m', check.reduce(value => value));
       const newBalance = check.reduce(value => value).balance;
       if (Object.hasOwnProperty.call(currentAccount, 'paymentBal')
         && currentAccount.balance < (newBalance - 500)) {
@@ -178,7 +178,7 @@ function getAllUpdates(updatePath, accountList, isTest = false) {
         )
       ))
       .catch(error => {
-        console.error('Error in allAccounts');
+        console.error('\x1b[30mError in allAccounts\x1b[0m');
         return reject(error);
       });
   });

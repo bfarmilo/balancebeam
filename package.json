@@ -30,7 +30,8 @@
     "package-linux": "npm run build && build --linux",
     "package-all": "npm run build && build -mwl",
     "custom-test": "set DEBUG=nightmare && node ./app/expandledger.test.js",
-    "getaccounts": "set DEBUG=nightmare && node ./app/actions/updateall.js \"../../../Dropbox (Personal)/Swap/Budget\" config.json test"
+    "getaccounts": "node ./app/actions/updateall.js \"C:/Users/Bill/Documents/Dropbox (Personal)/Swap/Budget\" config.json",
+    "getaccounts-test": "set DEBUG=nightmare && node ./app/actions/updateall.js \"C:/Users/Bill/Documents/Dropbox (Personal)/Swap/Budget\" config.json test"
   },
   "browserslist": "electron 1.6",
   "build": {
@@ -74,15 +75,8 @@
       "output": "release"
     }
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/chentsulin/electron-react-boilerplate.git"
-  },
-  "author": {
-    "name": "C. T. Lin",
-    "email": "chentsulin@gmail.com",
-    "url": "https://github.com/chentsulin"
-  },
+  "repository": "git+https://github.com/chentsulin/electron-react-boilerplate.git",
+  "author": "C. T. Lin <chentsulin@gmail.com> (https://github.com/chentsulin)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/chentsulin/electron-react-boilerplate/issues"
@@ -134,7 +128,7 @@
     "babel-preset-stage-0": "^6.24.1",
     "babel-register": "^6.24.1",
     "babili-webpack-plugin": "^0.1.1",
-    "chalk": "^1.1.3",
+    "chalk": "^2.0.1",
     "concurrently": "^3.4.0",
     "cross-env": "^5.0.0",
     "cross-spawn": "^5.1.0",
@@ -193,7 +187,6 @@
     "fs-extra": "^3.0.1",
     "history": "^4.6.1",
     "nightmare": "^2.10.0",
-    "prop-types": "^15.5.10",
     "react": "^15.5.4",
     "react-dom": "^15.5.4",
     "react-hot-loader": "3.0.0-beta.6",
@@ -210,5 +203,6 @@
     "node": ">=8.x",
     "npm": ">=3.x",
     "yarn": ">=0.21.3"
-  }
+  },
+  "main": "index.js"
 }

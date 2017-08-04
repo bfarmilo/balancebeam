@@ -142,7 +142,7 @@ class Main extends React.Component {
     const newBal = convertCurrency(
       account.balance || 0,
       account.currency || 'CAD',
-      this.state.displayCurrency || 'CAD'
+      currency || 'CAD'
     );
     recalculateBalance(
       aTable,
