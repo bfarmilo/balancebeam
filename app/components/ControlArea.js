@@ -5,6 +5,8 @@ import styles from './ControlArea.css';
 import type { accountItem } from '../actions/typedefs';
 import { formatCurrency } from '../actions/expandledger';
 
+// todo -- add single custom transaction to current ledger
+
 const ControlArea = (props: {
   accountTable: Array<accountItem>,
   account: accountItem,
@@ -18,7 +20,9 @@ const ControlArea = (props: {
   viewAccount: boolean,
   maxChars: number
 }) => {
-  const remainingBal = (props.account.balance - props.account.paymentBal) + props.account.targetSpend;
+  const remainingBal =
+    (props.account.balance - props.account.paymentBal)
+    + props.account.targetSpend;
   const creditCard = (
     <div>
       <div className={remainingBal < 0 ? `${styles.toggleButtonWarn} ${styles.toggleButton}` : `${styles.toggleButton}`} disabled={props.viewBudget || props.viewAccount}>

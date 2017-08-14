@@ -121,7 +121,7 @@ function updateTable(accounts, updates) {
         // if the new balance is $500 more than the old, likely a payment was made
         // so update paymentBal and paymentDate
         currentAccount.paymentBal = currentAccount.balance;
-        currentAccount.paymentDate = todaysDate.toISOString().split('T'[0]);
+        currentAccount.paymentDate = todaysDate.getUTCDate();
       }
       currentAccount.balance = newBalance;
       currentAccount.currency = check.reduce(value => value).currency;

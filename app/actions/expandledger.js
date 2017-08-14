@@ -166,6 +166,7 @@ to the specified output currency
 */
 function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
   let convertAmount = 0;
+  console.log(`conversion requested: ${amount} from ${fromCurrency} to ${toCurrency}`);
   if (fromCurrency === toCurrency) {
     convertAmount = Math.round(amount * 100) / 100;
   } else {
