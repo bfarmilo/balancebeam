@@ -22,12 +22,18 @@ function queueCommands(commandList) {
     const evalObj = commandList[5].length > 0 ? commandList[5].reduce(val => val) : false;
 
     nightmare
+      // Go to the web page from config.json
       .goto(commandList[1].N_GOTO)
+      // wait for the 'login' button to appear
       .wait(commandList[4].N_CLICK)
+      // enter user name (from config.json)
       .type(commandList[2].N_TYPE.target, commandList[2].N_TYPE.value)
+      // enter pwd (from config.json)
       .type(commandList[3].N_TYPE.target, commandList[3].N_TYPE.value)
+      // click login button (from config.json)
       .click(commandList[4].N_CLICK)
       .then(() => {
+        // some account have a 'wait' command, specified in accountList.json
         if (Object.prototype.hasOwnProperty.call(evalObj.action.N_EVALUATE, 'wait')) return nightmare.wait(7000);
         return nightmare;
       })
@@ -37,12 +43,17 @@ function queueCommands(commandList) {
       })
       .then(() => nightmare
         .wait(evalObj.action.N_EVALUATE.selector)
+        // use the evaluate sequence (from accountList.json)
         .evaluate((pattern, items) => {
+          // first create the dollars, cents, and [currency] regex from config.json
           const matchVal = new RegExp(pattern.match, 'g');
           // change to an array input
           const balances = items.map((value) => {
             const item = value.action.N_EVALUATE;
             const acctID = value.acctID;
+            // use the selector and value (usually innerHTML) from accountList.json
+            // replace using the regex (from config.json) and the replace pattern (from accountList.json)
+            // to convert into a signed Float (strip off commas and dollar signs)
             const balance = parseFloat(
               document.querySelector(item.selector)[item.value].replace(matchVal, item.quantity)
             );
@@ -107,31 +118,35 @@ return callback(null, 'nightmare done')
 function updateTable(accounts, updates) {
   // accounts is the list of all accounts
   // updates is an array of {acctID, balance, currency}
-  const todaysDate = new Date();
-  return accounts.map((account) => {
-    const currentAccount = account;
-    const check = updates
-      .reduce((accum, current) => accum.concat(current))
-      .filter(item => account.acctID === item.acctID);
-    if (check.length > 0) {
-      console.log('\x1b[32mcheck value:\x1b[0m', check.reduce(value => value));
-      const newBalance = check.reduce(value => value).balance;
-      if (Object.hasOwnProperty.call(currentAccount, 'paymentBal')
-        && currentAccount.balance < (newBalance - 500)) {
-        // if the new balance is $500 more than the old, likely a payment was made
-        // so update paymentBal and paymentDate
-        currentAccount.paymentBal = currentAccount.balance;
-        currentAccount.paymentDate = todaysDate.getUTCDate();
+  try {
+    const todaysDate = new Date();
+    return accounts.map((account) => {
+      const currentAccount = account;
+      const check = updates
+        .reduce((accum, current) => accum.concat(current))
+        .filter(item => account.acctID === item.acctID);
+      if (check.length > 0) {
+        console.log('\x1b[32m%s:\x1b[0m $ %d (%s)', currentAccount.accountName, check[0].balance, check[0].currency);
+        const newBalance = check.reduce(value => value).balance;
+        if (Object.hasOwnProperty.call(currentAccount, 'paymentBal')
+          && currentAccount.balance < (newBalance - 500)) {
+          // if the new balance is $500 more than the old, likely a payment was made
+          // so update paymentBal and paymentDate
+          currentAccount.paymentBal = currentAccount.balance;
+          currentAccount.paymentDate = todaysDate.getUTCDate();
+        }
+        currentAccount.balance = newBalance;
+        currentAccount.currency = check.reduce(value => value).currency;
+        currentAccount.balanceDate = todaysDate.toISOString().split('T')[0];
+        if (todaysDate === new Date(todaysDate.getUTCFullYear(), todaysDate.getUTCMonth(), 0)) {
+          currentAccount.monthEndBal = newBalance;
+        }
       }
-      currentAccount.balance = newBalance;
-      currentAccount.currency = check.reduce(value => value).currency;
-      currentAccount.balanceDate = todaysDate.toISOString().split('T')[0];
-      if (todaysDate === new Date(todaysDate.getUTCFullYear(), todaysDate.getUTCMonth(), 0)) {
-        currentAccount.monthEndBal = newBalance;
-      }
-    }
-    return currentAccount;
-  });
+      return currentAccount;
+    });
+  } catch (err) {
+    throw err;
+  }
 }
 
 function getAllAccounts(sequences) {

@@ -18,18 +18,18 @@ const CustomException = (message: string) => {
   this.message = message;
 };
 
-/*
-expandItem takes a budget record and expands it out based on the frequency of repetition.
-
-@param accountList:Array - an array of Account objects
-@param budgetRecord:Object - the current budget Record we are expanding
-@param startDate:String - the starting date for the ledger
-@param endDate:String - the ending date for the ledger
-@param debitCredit:String - 'DEBIT' or 'CREDIT'
-@param fromCurrency:String - 'CAD' or 'USD', the native currency of the account
-@param toCurrency: String - 'CAD' or 'USD', the currency to be displayed
-
-*/
+/**
+* expandItem takes a budget record and expands it out based on the frequency of repetition.
+* 
+* @param accountList:Array - an array of Account objects
+* @param budgetRecord:Object - the current budget Record we are expanding
+* @param startDate:String - the starting date for the ledger
+* @param endDate:String - the ending date for the ledger
+* @param debitCredit:String - 'DEBIT' or 'CREDIT'
+* @param fromCurrency:String - 'CAD' or 'USD', the native currency of the account
+* @param toCurrency: String - 'CAD' or 'USD', the currency to be displayed
+* @returns :Array of Ledger Items
+**/
 function expandItem(
   accountList,
   customTxnList,
@@ -156,17 +156,18 @@ function expandItem(
       }, []);
   }
 }
-/*
-convertCurrency converts from the account currency
-to the specified output currency
-
-@param amount:Float - the amount to convert
-@param fromCurrency:String 'CAD' or 'USD' the starting currency
-@param toCurrency:String 'CAD' or 'USD' the output currency
-*/
+/** 
+* convertCurrency converts from the account currency
+* to the specified output currency
+* 
+* @param amount:Float - the amount to convert
+* @param fromCurrency:String 'CAD' or 'USD' the starting currency
+* @param toCurrency:String 'CAD' or 'USD' the output currency
+* @returns Float - the converted amount
+**/
 function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
   let convertAmount = 0;
-  console.log(`conversion requested: ${amount} from ${fromCurrency} to ${toCurrency}`);
+  // console.log(`conversion requested: ${amount} from ${fromCurrency} to ${toCurrency}`);
   if (fromCurrency === toCurrency) {
     convertAmount = Math.round(amount * 100) / 100;
   } else {
@@ -179,13 +180,14 @@ function convertCurrency(amount: number, fromCurrency: string, toCurrency: strin
   }
   return convertAmount;
 }
-/*
-refreshBalance recalculates the running balance of the ledger
 
-@param ledgerList:Array of ledger objects
-@param startBalance:Float the starting balance of the account
-
-*/
+/**
+* refreshBalance recalculates the running balance of the ledger
+*
+* @param ledgerList {Array} of ledger objects
+* @param startBalance:Float the starting balance of the account
+* returns Array<ledgerItem>
+**/
 function refreshBalance(ledgerList: Array<ledgerItem>, startBalance: number): Array<ledgerItem> {
   let runningBalance = startBalance;
   return ledgerList.map(entry => {
@@ -196,11 +198,11 @@ function refreshBalance(ledgerList: Array<ledgerItem>, startBalance: number): Ar
     return result;
   });
 }
-/*
-sortLedger sorts a ledger in place
-
-@param ledger:Array of ledger objects
-*/
+/**
+* sortLedger sorts a ledger in place
+* @param ledger:Array of ledger objects
+* @returns null
+**/
 function sortLedger(ledger: Array<ledgerItem>): void {
   ledger.sort((a, b) => {
     if (Date.parse(a.txnDate) === Date.parse(b.txnDate)) {
@@ -209,18 +211,19 @@ function sortLedger(ledger: Array<ledgerItem>): void {
     return Date.parse(a.txnDate) - Date.parse(b.txnDate);
   });
 }
-/*
-recalculateBalance wraps the balance recalculation, and can be called on
-an existing ledger (refreshData <> []) or can create a ledger with balances.
-
-@param accountList: Array of account objects
-@param budgetList: Array of budget objects
-@param customTxnList: Array - the array of user-modified transactions
-@param account: Object (?) the account object to change
-@param showCurrency: String the output currency 'CAD' or 'USD'
-@param refreshData: Array for a refresh, old ledger Otherwise an empty array for a new recalculation
-@param callback
-*/
+/** 
+* recalculateBalance wraps the balance recalculation, and can be called on
+* an existing ledger (refreshData <> []) or can create a ledger with balances.
+* 
+* @param accountList: Array of account objects
+* @param budgetList: Array of budget objects
+* @param customTxnList: Array - the array of user-modified transactions
+* @param account: Object (?) the account object to change
+* @param showCurrency: String the output currency 'CAD' or 'USD'
+* @param refreshData: Array for a refresh, old ledger Otherwise an empty array for a new recalculation
+* @param callback
+* @returns callback(error, refreshed Balance)
+**/
 
 function recalculateBalance(
   accountList: Array<accountItem>,
@@ -253,18 +256,19 @@ function recalculateBalance(
     }
   });
 }
-/*
-ExpandLedger calls expandItem for each budget transaction
-matching the currently displayed account
-
-@param accountList:Array - an array of account Objects
-@param budgetList: Array - the array of budgetList Objects
-@param customTxnList: Array - the array of user-modified transactions
-@param account: Object - the account object we are expanding
-@showCurrency:String - 'USD' or 'CAD' the currency we want to display
-@monthsToShow:number - number of months to include
-
-*/
+/** 
+* ExpandLedger calls expandItem for each budget transaction
+* matching the currently displayed account
+* 
+* @param accountList:Array - an array of account Objects
+* @param budgetList: Array - the array of budgetList Objects
+* @param customTxnList: Array - the array of user-modified transactions
+* @param account: Object - the account object we are expanding
+* @param showCurrency:String - 'USD' or 'CAD' the currency we want to display
+* @param monthsToShow:number - number of months to include
+* @param callback: function 
+* @returns function (error, Array<ledgerItem>)
+**/
 function expandLedger(
   accountList: Array<accountItem>,
   budgetList: Array<budgetItem>,

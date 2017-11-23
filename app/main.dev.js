@@ -207,7 +207,7 @@ const openAccountWindow = (updateRef, acctID) => {
   });
 
   viewerWindow.webContents.once('did-finish-load', e => {
-    console.log(chalk.green(`finished Loading, trying ${login.target} and ${pwd.target}}`));
+    console.log(chalk.green(`finished Loading, inserting login information`));
     viewerWindow.webContents.executeJavaScript(
       `document.querySelector("${login.target}").value = "${login.value}"; document.querySelector("${pwd.target}").value = "${pwd.value}"`
     );

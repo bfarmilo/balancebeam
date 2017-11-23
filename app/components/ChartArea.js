@@ -49,7 +49,7 @@ const ChartArea = (props: {
       }}
     />
   ) : null;
-  console.log('chart: got target data', props.target, props.showTarget);
+  // console.log('chart: got target data', props.target, props.showTarget);
   return (
     <div>
       <svg viewBox="0 0 340 200">
