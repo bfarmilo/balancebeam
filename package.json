@@ -30,8 +30,8 @@
     "package-linux": "npm run build && build --linux",
     "package-all": "npm run build && build -mwl",
     "custom-test": "set DEBUG=nightmare && node ./app/expandledger.test.js",
-    "getaccounts": "node ./app/actions/updateall.js \"C:/Users/Bill/Documents/Dropbox (Personal)/Swap/Budget\" config.json",
-    "getaccounts-test": "set DEBUG=nightmare && node ./app/actions/updateall.js \"C:/Users/Bill/Documents/Dropbox (Personal)/Swap/Budget\" config.json test"
+    "getaccounts": "node ./app/actions/updateall.js",
+    "getaccounts-test": "set DEBUG=nightmare && node ./app/actions/updateall.js test"
   },
   "browserslist": "electron 1.6",
   "build": {
