@@ -219,6 +219,35 @@ const openAccountWindow = (updateRef, acctID) => {
   openAccounts.set(`${acctID}`, viewerWindow);
 };
 
+// TODO: Get USD exchange data
+const openExchangeWindow = () => {
+  const exchangeURL = `https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates-lookup/?series%5B%5D=FXUSDCAD&lookupPage=lookup_daily_exchange_rates_2017.php&startRange=2007-11-30&rangeType=range&rangeValue=1.y&dFrom=&dTo=&submit_button=Submit`;
+  // const exchangeURL =`https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?start_date=2016-02-01`
+  // format of JSON returned is observations[idx].d = date, observations[idx].FXUSDCAD.v = rate
+  // for now, just open a window
+  const exchWindow = new BrowserWindow({
+    width: 1024,
+    height: 800,
+    x: 50,
+    y: 50,
+    autoHideMenuBar: true,
+    webPreferences: {
+      webSecurity: false,
+      nodeIntegration: false
+    }
+  });
+
+  // When the window is closed, delete it from the map of open windows
+  exchWindow.on('closed', () => {
+    console.log(chalk.green('Main: exchange window closed'));
+    openAccounts.delete('exchange');
+  });
+
+  // now open the window and add it to the set of open windows
+  exchWindow.loadURL(exchangeURL);
+  openAccounts.set('exchange', exchWindow);
+};
+
 // on startup
 
 if (process.env.LOCALAPPDATA) {
@@ -292,4 +321,19 @@ ipcMain.on('open_account', (event, acctID, updateRef) => {
     openAccountWindow(updateRef, acctID);
   }
 });
+
+ipcMain.on('get_exchange', (event) => {
+  console.log(chalk.green(`Main: received call to open exchange window`));
+  let alreadyOpen = false;
+  // check to see if window already opened - if so just give it the focus
+  if (openAccounts.has('exchange')) {
+    console.log(chalk.green(`Main: match found with id ${openAccounts.get('exchange').id}`));
+    BrowserWindow.fromId(openAccounts.get('exchange').id).focus();
+    alreadyOpen = true;
+  }
+  if (!alreadyOpen) {
+    // else open new window
+    openExchangeWindow();
+  }
+})
 
