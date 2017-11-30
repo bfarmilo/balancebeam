@@ -5,7 +5,7 @@ const { getDropBoxPath } = require('./getdropbox');
 // call with updateall.js path_to_json_files config_file_name [test]
 
 const filePath = '\\Swap\\Budget\\';
-const testMode = process.argv[2] === 'test';
+const testMode = process.argv[3] === 'test';
 
 let configPath;
 let configFile;

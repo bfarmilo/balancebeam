@@ -1,4 +1,4 @@
-type updateSequenceItem = {
+export type updateSequenceItem = {
   N_EVALUATE: {
     selector: string,
     value: string,
