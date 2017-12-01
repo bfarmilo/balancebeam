@@ -165,7 +165,7 @@ class Main extends React.Component {
           }
           makeTickVals(this.minBalance, this.maxBalance)
             .then(tickValues => {
-              console.log(tickValues);
+              // console.log(tickValues);
               const maxBal = Math.max(...tickValues, this.maxBalance);
               const minBal = Math.min(...tickValues, this.minBalance);
               this.setState({
@@ -210,6 +210,7 @@ class Main extends React.Component {
 
   changeViewCurrency(event) {
     console.log('Main: request to change display currency to', event.target.innerHTML);
+    ipcRenderer.send('get_exchange');
     if (this.state.displayCurrency === 'USD') {
       this.refreshLedgerBalance(
         this.state.accountTable,
@@ -353,8 +354,8 @@ class Main extends React.Component {
 
   editLedgerRow(event) {
     const [txnID, action] = event.currentTarget.name.split('_');
+    const { txnDate, Description, Amount } = this.state.data.find(entry => entry.txnID === txnID);
     if (action === 'enable') {
-      const { txnDate, Description, Amount } = this.state.data.find(entry => entry.txnID === txnID);
       this.setState({
         editTxn: {
           txnID,
@@ -373,13 +374,13 @@ class Main extends React.Component {
       modifyLedger(
         action,
         this.state.customLedgerTable,
-        this.state.editTxn,
+        action === 'skip' ? { txnID, Amount, txnDate, currency: this.state.account.currency, Description: `skip_${Description}` } : this.state.editTxn,
         this.state.accountIdx,
         this.state.displayCurrency,
         budgetEntry,
         (err, customLedgerTable) => {
           if (err) {
-            console.log(err);
+            console.error(err);
           } else {
             ipcRenderer.send('writeOutput', 'customLedger', customLedgerTable);
             console.log('Home-editLedgerRow: received new ledger data', customLedgerTable);

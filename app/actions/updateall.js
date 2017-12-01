@@ -2,7 +2,7 @@ const fse = require('fs-extra');
 const { getAllUpdates } = require('./getbalances');
 const { getDropBoxPath } = require('./getdropbox');
 
-// call with updateall.js path_to_json_files config_file_name [test]
+// call with updateall.js [test]
 
 const filePath = '\\Swap\\Budget\\';
 const testMode = process.argv[3] === 'test';

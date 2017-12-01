@@ -38,13 +38,12 @@ const BalanceTable = (props: {
         let amntCell = <td className={val.Amount > 0 ? 'Currency' : 'Currency Negative'}>{formatCurrency(val.Amount)}</td>;
         let buttonCell = props.editTxn.txnID !== '' ? <button disabled>x</button> : <button id="enable" name={`${val.txnID}_enable`} type="button" onClick={props.editEntry}>+</button>;
         let resetButton = '';
-        let skipButton = '';
+        const skipButton = <button name={`${val.txnID}_skip`} id="skip" type="button" onClick={props.editEntry}><i id="skip" className="fa fa-fw fa-fast-forward" alt="skip transaction" aria-hidden="true" /></button>;
         if (props.editTxn.txnID === val.txnID) {
           dateCell = <td><input className="EditLedger" type="date" name={`${val.txnID}_txnDate`} value={props.editTxn.txnDate} onChange={props.handleDataChange} /></td>;
           discCell = <td><input className="EditLedger" type="text" name={`${val.txnID}_Description`} value={props.editTxn.Description} onChange={props.handleDataChange} /></td>;
           amntCell = <td><input className="EditLedger Currency" type="number" name={`${val.txnID}_Amount`} value={props.editTxn.Amount} onChange={props.handleDataChange} /></td>;
           buttonCell = <button name={`${val.txnID}_modify`} id="modify" type="button" onClick={props.editEntry}><i id="modify" className="fa fa-check fa-fw" alt="save changes and exit edit mode" aria-hidden="true" /></button>;
-          skipButton = val.Custom ? <button name={`${val.txnID}_skip`} id="skip" type="button" onClick={props.editEntry}><i id="skip" className="fa fa-fw fa-fast-forward" alt="skip transaction" aria-hidden="true" /></button> : '';
           resetButton = val.Custom ? <button name={`${val.txnID}_clear`} id="clear" type="button" onClick={props.editEntry}><i id="clear" className="fa fa-eraser fa-fw" alt="revert to budget" aria-hidden="true" /></button> : '';
         }
         return (

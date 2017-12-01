@@ -44,10 +44,12 @@ function updateMaster(budgetList, newBudgetList, callback) {
   }
 }
 /*
-customLedger writes a modified single ledger entry into the customLedger so it will persist
+modifyLedger writes a modified single ledger entry into the customLedger so it will persist
+@param action - 'modify', 'skip', 'clear'
 @param customLedger:Array - an array of custom (user-modified) Ledger Entries
-@param newEntry:Object - the new ledger object to append / modify in the table
+@param modifiedEntry:Object - the new ledger object to append / modify in the table
 @param account:number - the account currently being viewed
+@param currency:string - 'USD' or 'CAD'
 @param budgetEntry - the matching parent budget entry for this transaction
 */
 function modifyLedger(
@@ -61,7 +63,7 @@ function modifyLedger(
 ) {
   // merge newEntry into the customLedger
   try {
-    console.log(`'modifyLedger called with action ${action}`);
+    console.log(`modifyLedger called with action ${action}`);
     let updatedLedger = [];
     const today = new Date();
     switch (action) {
@@ -92,9 +94,15 @@ function modifyLedger(
           };
           if (customLedger.find(item => item.txnID === newEntry.txnID)) {
             updatedLedger = customLedger.reduce((result, item) => {
+              const includeDate = new Date(item.txnDate);
+              // move the date threshold forward by item.delay
+              // to ensure both sides remain in the custom leger until
+              // the delayed date passes, or today + 1 whichever is greater
+              includeDate.setUTCDate(includeDate.getUTCDate() + 1 + item.delay);
+              console.log('customTxn, include date: %s', includeDate);
               if (item.txnID === newEntry.txnID) {
                 result.push(newEntry);
-              } else if (new Date(item.txnDate) >= today) {
+              } else if (includeDate >= today) {
                 result.push(item);
               }
               return result;
@@ -110,22 +118,28 @@ function modifyLedger(
           customLedger.filter(item => item.txnID !== modifiedEntry.txnID)
         );
       case 'skip': {
-        const newItem = { ...modifiedEntry };
+        const skipEntry = { ...modifiedEntry };
+        console.log('modifyLedger: skipping transaction ID %s', skipEntry.txnID);
+        skipEntry.skip = true;
+        skipEntry.fromAccount = 0;
+        skipEntry.toAccount = 0;
+        skipEntry.delay = 0;
+        skipEntry.txnDate = today.toISOString().split('T')[0];
         today.setDate(today.getDate() + 1);
-        updatedLedger = customLedger.reduce((result, item) => {
-          if (item.txnID === newItem.txnID) {
-            console.log('modifyLedger: skipping transaction ID', newItem.txnID);
-            newItem.skip = true;
-            newItem.fromAccount = 0;
-            newItem.toAccount = 0;
-            newItem.delay = 0;
-            newItem.txnDate = today.toISOString().split('T')[0];
-            result.push(newItem);
-          } else {
-            result.push(item);
-          }
-          return result;
-        }, []);
+        // first - look to replace an existing custom entry
+        if (customLedger.find(item => item.txnID === skipEntry.txnID)) {
+          updatedLedger = customLedger.reduce((result, item) => {
+            if (item.txnID === skipEntry.txnID) {
+              result.push(skipEntry);
+            } else {
+              result.push(item);
+            }
+            return result;
+          }, []);
+        } else {
+          // if its not there, just push the new entry into the custom ledger
+          updatedLedger = [].concat(customLedger, [skipEntry]);
+        }
         return callback(
           null,
           updatedLedger
