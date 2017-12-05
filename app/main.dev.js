@@ -25,6 +25,26 @@ let pathArray = [];
 
 let mainWindow = null;
 
+// on startup
+
+if (process.env.LOCALAPPDATA) {
+  fse.readJSON(`${process.env.LOCALAPPDATA}\\Dropbox\\info.json`)
+    .then(dropbox => {
+      dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
+      console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
+      return fse.readJSON(`${dropBoxPath}\\config.json`)
+    })
+    .then(config => {
+      pathArray = config.config.updatePath;
+      return console.log(chalk.green('Main: got config file'));
+    })
+    .catch(error => {
+      if (mainWindow) {
+        mainWindow.webContents.send('message', `Error with dropbox path ${error.name}: ${error.message}`);
+      }
+    });
+}
+
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
@@ -47,7 +67,7 @@ const installExtensions = async () => {
 
   return Promise
     .all(extensions.map(name => installer.default(installer[name], forceDownload)))
-    .catch(console.log);
+    .catch(err => console.error(chalk.red(err)));
 };
 
 /**
@@ -74,10 +94,9 @@ app.on('ready', async () => {
     height: 728
   });
 
-  mainWindow.loadURL(`file://${__dirname}/app.html`);
 
   // now do all of the loading, firing events as you go
-
+  mainWindow.loadURL(`file://${__dirname}/app.html`);
   // @TODO: Use 'ready-to-show' event
   //        https://github.com/electron/electron/blob/master/docs/api/browser-window.md#using-ready-to-show-event
   mainWindow.webContents.on('did-finish-load', () => {
@@ -87,11 +106,12 @@ app.on('ready', async () => {
     mainWindow.show();
     mainWindow.focus();
     getAllData(mainWindow.webContents)
-      .then((result) => result.map(item => {
+      .then(result => {
+        return result.map(item => {
         if (mainWindow) mainWindow.webContents.send(item.dataType, item.value);
         return item;
       }).filter(val => (val.dataType === 'accountList'))
-      )
+      })
       .then((result) => {
         if (mainWindow) mainWindow.webContents.send('ready');
         const todayDate = new Date();
@@ -248,25 +268,6 @@ const openExchangeWindow = () => {
   openAccounts.set('exchange', exchWindow);
 };
 
-// on startup
-
-if (process.env.LOCALAPPDATA) {
-  fse.readJSON(`${process.env.LOCALAPPDATA}//Dropbox//info.json`)
-    .then(dropbox => {
-      dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
-      return console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
-    })
-    .then(() => fse.readJSON(`${dropBoxPath}\\config.json`))
-    .then(config => {
-      pathArray = config.config.updatePath;
-      return console.log(chalk.green('Main: got config file'));
-    })
-    .catch(error => {
-      if (mainWindow) {
-        mainWindow.webContents.send('message', `Error with dropbox path ${error.name}: ${error.message}`);
-      }
-    });
-}
 // event listeners
 
 ipcMain.on('recover', e => {
