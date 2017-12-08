@@ -15,6 +15,8 @@ import fse from 'fs-extra';
 import MenuBuilder from './menu';
 import chalk from 'chalk';
 
+import { getDropBoxPath } from './actions/getdropbox';
+
 const exec = require('child_process').exec;
 
 let checkAccount = true;
@@ -27,23 +29,21 @@ let mainWindow = null;
 
 // on startup
 
-if (process.env.LOCALAPPDATA) {
-  fse.readJSON(`${process.env.LOCALAPPDATA}\\Dropbox\\info.json`)
-    .then(dropbox => {
-      dropBoxPath = `${dropbox.personal.path}\\Swap\\Budget`;
-      console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
-      return fse.readJSON(`${dropBoxPath}\\config.json`)
-    })
-    .then(config => {
-      pathArray = config.config.updatePath;
-      return console.log(chalk.green('Main: got config file'));
-    })
-    .catch(error => {
-      if (mainWindow) {
-        mainWindow.webContents.send('message', `Error with dropbox path ${error.name}: ${error.message}`);
-      }
-    });
-}
+getDropBoxPath('personal')
+  .then(dropbox => {
+    dropBoxPath = `${dropbox}\\Swap\\Budget`;
+    console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
+    return fse.readJSON(`${dropBoxPath}\\config.json`)
+  })
+  .then(config => {
+    pathArray = config.config.updatePath;
+    return console.log(chalk.green('Main: got config file'));
+  })
+  .catch(error => {
+    if (mainWindow) {
+      mainWindow.webContents.send('message', `Error with dropbox path ${error.name}: ${error.message}`);
+    }
+  });
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -108,9 +108,9 @@ app.on('ready', async () => {
     getAllData(mainWindow.webContents)
       .then(result => {
         return result.map(item => {
-        if (mainWindow) mainWindow.webContents.send(item.dataType, item.value);
-        return item;
-      }).filter(val => (val.dataType === 'accountList'))
+          if (mainWindow) mainWindow.webContents.send(item.dataType, item.value);
+          return item;
+        }).filter(val => (val.dataType === 'accountList'))
       })
       .then((result) => {
         if (mainWindow) mainWindow.webContents.send('ready');
