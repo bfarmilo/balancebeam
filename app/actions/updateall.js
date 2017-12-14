@@ -5,7 +5,7 @@ const { getDropBoxPath } = require('./getdropbox');
 // call with updateall.js [test]
 
 const filePath = '\\Swap\\Budget\\';
-const testMode = process.argv[3] === 'test';
+const testMode = process.argv[2] === 'test';
 
 let configPath;
 let configFile;
@@ -13,7 +13,8 @@ let accountFile;
 
 console.log(`UpdateAll called in ${testMode ? 'test' : 'normal'} mode`);
 
-getDropBoxPath('personal')
+const updateAll = (next) => {
+  return getDropBoxPath('personal')
   .then(dropbox => {
     configFile = `${dropbox}${filePath}config.json`;
     accountFile = `${dropbox}${filePath}accountList.json`;
@@ -29,7 +30,16 @@ getDropBoxPath('personal')
     // console.log(`getAllUpdates: writing to ${writePath}`);
     return fse.writeFile(accountFile, `{ "accountList": ${JSON.stringify(data)} }`);
   })
-  .then(() => console.log('getAllUpdates: file updated'))
-  .catch((error) => {
+  .then(() => {
+    console.log('getAllUpdates: file updated');
+    return Promise.resolve(next);
+  })
+  .catch(error => {
     console.error(error);
-  });
+    return Promise.reject(error);
+  })
+};
+
+updateAll();
+
+//module.exports = { updateAll };

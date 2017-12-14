@@ -112,17 +112,11 @@ app.on('ready', async () => {
           return item;
         }).filter(val => (val.dataType === 'accountList'))
       })
-      .then((result) => {
-        if (mainWindow) mainWindow.webContents.send('ready');
+      .then(accountData => {
         const todayDate = new Date();
-        if (checkAccount &&
-          (result.reduce(val => val).value.findIndex(val => val.balanceDate === todayDate.toISOString().split('T')[0]) === -1)) {
-          checkAccount = false;
-          if (mainWindow) updateAccounts(mainWindow.webContents);
-        }
-        console.log(chalk.green('all promises resolved'));
-        return 'done';
+        return checkAccount ? updateAccounts(mainWindow.webContents) : 'done';
       })
+      .then(updated => mainWindow.webContents.send('ready'))
       .catch(err => {
         if (mainWindow) {
           mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
@@ -152,30 +146,48 @@ app.on('ready', async () => {
 });
 
 // custom functions
-const updateAccounts = (target) => {
-  new Promise((resolve, reject) => {
-    exec(`node ./app/actions/updateall.js "${dropBoxPath}" "config.json"`, (err, stdout, stderr) => {
-      console.error(chalk.red(`${stderr}`));
-      if (err || stderr) {
-        if (mainWindow) {
-          mainWindow.webContents.send('message', 'Error executing updateall');
-        }
-        return reject(stderr);
-      }
-      console.log(chalk.green('updateAccounts: '), stdout);
-      return resolve('accountList');
+
+/** Promise wrapper for child_proess
+ * 
+ */
+function promiseFromChildProcess(child, next) {
+  return new Promise((resolve, reject) => {
+    child.addListener('error', (code, signal) => {
+      console.log('ChildProcess error', code, signal);
+      reject();
     });
+    child.addListener('exit', (code, signal) => {
+      if (code === 0) {
+        resolve(next);
+      } else {
+        reject();
+      }
+    });
+  });
+}
+
+
+const updateAccounts = target => {
+  let updates = exec('node ./app/actions/updateall.js');
+  updates.stdout.on('data', data => console.log(chalk.green('updateAccounts: '), data))
+  updates.stderr.on('data', error => {
+    console.error(chalk.red('updateAccounts: '), error);
+    if (mainWindow) {
+      mainWindow.webContents.send('message', 'Error executing updateall');
+    }
   })
+  return promiseFromChildProcess(updates, 'accountList' )
     .then(account => getData(account))
     .then(results => {
       if (target) target.send(results.dataType, results.value);
-      return 'done';
+      return Promise.resolve('done');
     })
     .catch(err => {
       console.error(chalk.red(`${err}`));
       if (mainWindow) {
         mainWindow.webContents.send('message', `Error updating Accounts ${JSON.stringify(err)}`);
       }
+      return Promise.reject(err);
     });
 };
 
@@ -228,6 +240,7 @@ const openAccountWindow = (updateRef, acctID) => {
 
   viewerWindow.webContents.once('did-finish-load', e => {
     console.log(chalk.green(`finished Loading, inserting login information`));
+    console.log(viewerWindow.webContents.isLoading());
     viewerWindow.webContents.executeJavaScript(
       `document.querySelector("${login.target}").value = "${login.value}"; document.querySelector("${pwd.target}").value = "${pwd.value}"`
     );
@@ -277,7 +290,16 @@ ipcMain.on('recover', e => {
 
 ipcMain.on('update', e => {
   console.log(chalk.green('Main: received update request from window'), e.sender.currentIndex);
-  if (mainWindow) updateAccounts(mainWindow.webContents);
+  if (mainWindow) {
+    updateAccounts(mainWindow.webContents)
+    .then(updated => mainWindow.webContents.send('message', 'ready'))
+    .catch(err => {
+      if (mainWindow) {
+        mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
+        mainWindow.webContents.send('message', 'ready');
+      }
+    })
+  };
 });
 
 ipcMain.on('writeOutput', (e, dataType, value) => {

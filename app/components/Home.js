@@ -482,8 +482,8 @@ class Main extends React.Component {
     let visibleBlocks;
     const errorBlock = (
       <div>
-        ${this.state.loadingMessage}
-        <button type="button" onClick={() => ipcRenderer.send('recover')}>Retry</button>
+        <span>{this.state.loadingMessage} </span>
+        <button type="button" onClick={() => ipcRenderer.send('update')}>Retry</button>
       </div>
     );
     const controlArea = (
@@ -537,7 +537,7 @@ class Main extends React.Component {
             target={Object.hasOwnProperty.call(this.state.account, 'paymentBal')
               ? createTargetChart(this.state.account)
               : ''}
-            showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentBal')}
+            showTarget={false} //{Object.hasOwnProperty.call(this.state.account, 'paymentBal')} //NOT WORKING
           />
           <BalanceTable
             balance={this.state.displayBalance}

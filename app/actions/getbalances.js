@@ -1,6 +1,9 @@
 const Nightmare = require('nightmare');
-const electronPath = require('../../node_modules/electron');
+const electronPath = require(`${__dirname}/../../node_modules/electron`);
 // const { updatePath } = require('../dist/config.json');
+
+const BALANCE_STEP = 500; //if credit card balances jump by this amount it indicates a payment, weeds out small credits
+let testMode = false;
 
 /*
 const N_PATTERN = 'N_PATTERN';
@@ -10,8 +13,11 @@ const N_CLICK = 'N_CLICK';
 const N_EVALUAT = 'N_EVALUATE';
 */
 
-let testMode = false;
-
+/**
+ * queueCommands calls nightmare and runs through the passed command list
+ * @param {Array<commands>} commandList an array of objects which correlate to nightmare commands
+ * @returns {Promise => {acctID, balance, currency}} 
+ */
 function queueCommands(commandList) {
   return new Promise((resolve, reject) => {
     const nightmare = Nightmare({
@@ -33,7 +39,7 @@ function queueCommands(commandList) {
       // click login button (from config.json)
       .click(commandList[4].N_CLICK)
       .then(() => {
-        // some account have a 'wait' command, specified in accountList.json
+        // some accounts have a 'wait' command, specified in accountList.json
         if (Object.prototype.hasOwnProperty.call(evalObj.action.N_EVALUATE, 'wait')) return nightmare.wait(7000);
         return nightmare;
       })
@@ -114,14 +120,19 @@ nightmare.end()
 return callback(null, 'nightmare done')
 */
 
-
+/**
+ * 
+ * @param {Array<accountList>} accounts current (old) account data from file
+ * @param {Array<{acctID, balance, currency>}} updates from the page
+ * @returns {Array<accountList>} updated account list
+ */
 function updateTable(accounts, updates) {
   // accounts is the list of all accounts
   // updates is an array of {acctID, balance, currency}
   try {
     const todaysDate = new Date();
-    return accounts.map((account) => {
-      const currentAccount = account;
+    return accounts.map(account => {
+      const currentAccount = {...account};
       const check = updates
         .reduce((accum, current) => accum.concat(current))
         .filter(item => account.acctID === item.acctID);
@@ -129,10 +140,10 @@ function updateTable(accounts, updates) {
         console.log('\x1b[32m%s:\x1b[0m $ %d (%s)', currentAccount.accountName, check[0].balance, check[0].currency);
         const newBalance = check.reduce(value => value).balance;
         if (Object.hasOwnProperty.call(currentAccount, 'paymentBal')
-          && currentAccount.balance < (newBalance - 500)) {
-          // if the new balance is $500 more than the old, likely a payment was made
-          // so update paymentBal and paymentDate
-          currentAccount.paymentBal = currentAccount.balance;
+          && newBalance > (currentAccount.balance + BALANCE_STEP)) {
+          // if the new balance is BALANCE_STEP more than the old, likely a payment was made
+          // so update paymentBal with the new balance and paymentDate
+          currentAccount.paymentBal = newBalance;
           currentAccount.paymentDate = todaysDate.getUTCDate();
         }
         currentAccount.balance = newBalance;
@@ -149,15 +160,27 @@ function updateTable(accounts, updates) {
   }
 }
 
+/**
+ * calls nightmare for each element of the incoming array. One element per account.
+ * @param {Array<Objects>} sequences an array of nightmare commands, one per account
+ * @returns {Promise => Array<{acctID, balance, currency}>} the updated account data from the web
+ */
 function getAllAccounts(sequences) {
   return Promise.all(sequences.map(queueCommands).map(p => p.catch(e => e)));
 }
 
-// @param: updatePath:array<object> an array of all update path references
-
+/**
+ * Entry function to get updates for each account
+ * 
+ * @param {array<object>} updatePath an array of all update path references
+ * @param {accountItem} accountList the original account list
+ * @param {boolean} isTest true for test mode
+ * @returns {Promise => Array<accountItem>} 
+ */
 function getAllUpdates(updatePath, accountList, isTest = false) {
   return new Promise((resolve, reject) => {
     testMode = isTest;
+    // first, build sequences by traversing config.json, accountList.json for various data bits
     const allSequences = updatePath
       .map(val => val.updateRef) // first make an array of updateRefs
       .filter(ref => accountList
@@ -185,6 +208,7 @@ function getAllUpdates(updatePath, accountList, isTest = false) {
       )
       );
     // console.log(allSequences);
+    // now we have an array of nightmare-ready commands
     getAllAccounts(allSequences)
       .then(results => resolve(
         updateTable(
