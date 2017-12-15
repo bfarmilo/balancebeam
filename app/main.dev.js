@@ -308,7 +308,7 @@ ipcMain.on('update', e => {
   if (mainWindow) {
     mainWindow.webContents.send('message', 'received update request')
     updateAccounts(mainWindow.webContents)
-    .then(updated => mainWindow.webContents.send('message', 'loading OK'))
+    .then(updated => mainWindow.webContents.send('message', 'account updated'))
     .catch(err => {
       if (mainWindow) {
         mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
@@ -325,7 +325,7 @@ ipcMain.on('writeOutput', (e, dataType, value) => {
         mainWindow.webContents.send('message', `${err.name}: ${err.message}`);
       }
     } else {
-      mainWindow.webContents.send('message', 'loading OK');
+      mainWindow.webContents.send('message', 'file written');
     }
   });
 });
@@ -337,6 +337,7 @@ ipcMain.on('updateLedger', e => {
     .then(results => {
       if (mainWindow) {
         mainWindow.webContents.send(results.dataType, results.value);
+        mainWindow.webContents.send('message', 'ledger updated');
         mainWindow.webContents.send('ready');
       }
       return 'done';
@@ -361,7 +362,7 @@ ipcMain.on('open_account', (event, acctID, updateRef) => {
   if (!alreadyOpen) {
     // else open new window
     openAccountWindow(updateRef, acctID);
-    mainWindow.webContents.send('message', 'loading OK');
+    mainWindow.webContents.send('message', 'account opened');
   }
 });
 
