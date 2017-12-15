@@ -11,7 +11,7 @@ let configPath;
 let configFile;
 let accountFile;
 
-console.log(`UpdateAll called in ${testMode ? 'test' : 'normal'} mode`);
+console.log(`${testMode ? 'UpdateAll called in test mode' : 'updating balances...'}`);
 
 const updateAll = (next) => {
   return getDropBoxPath('personal')

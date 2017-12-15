@@ -15,8 +15,8 @@ export type ledgerItem = {
   Amount: number,
   Account: number | void,
   Custom: boolean | void,
-  rate: ?number | void,
-  delay: ?number | void,
+  rate: number | void,
+  delay: number | void,
   Balance: number | void
 };
 
@@ -29,7 +29,7 @@ export type customLedgerItem = {
   Custom: boolean | void,
   Description: string,
   currency: string,
-  delay: ?number,
+  delay: number | void,
   skip: boolean | void
 };
 

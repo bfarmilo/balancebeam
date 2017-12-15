@@ -74,7 +74,7 @@ class Main extends React.Component {
       editBud: blankBud,
       accountTable: [],
       accountIdx: 1,
-      account: {},
+      account: blankAcct,
       editAcct: blankAcct,
       customLedgerTable: [],
       data: [],
@@ -176,7 +176,6 @@ class Main extends React.Component {
                 displayCurrency: currency,
                 data,
                 tickValues,
-                loadingMessage: 'ready',
                 zeroPos: (maxBal > 0
                   ? maxBal / (maxBal - minBal)
                   : 0
@@ -488,6 +487,7 @@ class Main extends React.Component {
     );
     const controlArea = (
       <ControlArea
+        message={this.state.loadingMessage}
         accountTable={this.state.accountTable}
         account={this.state.account}
         selectAccount={this.changeAccount}
@@ -566,7 +566,7 @@ class Main extends React.Component {
     }
     return (
       <div>
-        {this.state.loadingMessage !== 'ready'
+        {(this.state.loadingMessage.includes('Error'))
           ? errorBlock
           : visibleBlocks}
       </div>

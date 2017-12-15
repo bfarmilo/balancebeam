@@ -37,6 +37,9 @@ getDropBoxPath('personal')
   })
   .then(config => {
     pathArray = config.config.updatePath;
+    if (mainWindow) {
+      mainWindow.webContents.send('message', 'config file loaded');
+    }
     return console.log(chalk.green('Main: got config file'));
   })
   .catch(error => {
@@ -108,7 +111,10 @@ app.on('ready', async () => {
     getAllData(mainWindow.webContents)
       .then(result => {
         return result.map(item => {
-          if (mainWindow) mainWindow.webContents.send(item.dataType, item.value);
+          if (mainWindow) {
+            mainWindow.webContents.send('message', `loading ${item.dataType}`);
+            mainWindow.webContents.send(item.dataType, item.value);
+          };
           return item;
         }).filter(val => (val.dataType === 'accountList'))
       })
@@ -116,12 +122,13 @@ app.on('ready', async () => {
         const todayDate = new Date();
         return checkAccount ? updateAccounts(mainWindow.webContents) : 'done';
       })
-      .then(updated => mainWindow.webContents.send('ready'))
+      .then(updated => {
+        mainWindow.webContents.send('message', 'loading OK');
+        mainWindow.webContents.send('ready');
+      })
       .catch(err => {
         if (mainWindow) {
           mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
-
-          mainWindow.webContents.send('message', 'ready');
         }
       });
   });
@@ -169,17 +176,25 @@ function promiseFromChildProcess(child, next) {
 
 const updateAccounts = target => {
   let updates = exec('node ./app/actions/updateall.js');
-  updates.stdout.on('data', data => console.log(chalk.green('updateAccounts: '), data))
+  updates.stdout.on('data', data => {
+    console.log(chalk.green('updateAccounts: '), data);
+    if (mainWindow) {
+      mainWindow.webContents.send('message', data);
+    }
+  });
   updates.stderr.on('data', error => {
     console.error(chalk.red('updateAccounts: '), error);
     if (mainWindow) {
-      mainWindow.webContents.send('message', 'Error executing updateall');
+      mainWindow.webContents.send('message', 'Error updating accounts, please retry');
     }
   })
   return promiseFromChildProcess(updates, 'accountList' )
     .then(account => getData(account))
     .then(results => {
-      if (target) target.send(results.dataType, results.value);
+      if (target) {
+        target.send(results.dataType, results.value);
+        target.send('message', `received updated ${results.dataType}`);
+      };
       return Promise.resolve('done');
     })
     .catch(err => {
@@ -285,36 +300,39 @@ const openExchangeWindow = () => {
 
 ipcMain.on('recover', e => {
   console.log(chalk.green('Main: received error OK window'), e.sender.currentIndex);
-  if (mainWindow) mainWindow.webContents.send('message', 'ready');
+  if (mainWindow) mainWindow.webContents.send('message', 'loading OK');
 });
 
 ipcMain.on('update', e => {
   console.log(chalk.green('Main: received update request from window'), e.sender.currentIndex);
   if (mainWindow) {
+    mainWindow.webContents.send('message', 'received update request')
     updateAccounts(mainWindow.webContents)
-    .then(updated => mainWindow.webContents.send('message', 'ready'))
+    .then(updated => mainWindow.webContents.send('message', 'loading OK'))
     .catch(err => {
       if (mainWindow) {
         mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
-        mainWindow.webContents.send('message', 'ready');
       }
     })
   };
 });
-
 ipcMain.on('writeOutput', (e, dataType, value) => {
   console.log(chalk.green(`Main: received call to update ${dataType} from window`), e.sender.currentIndex);
+  mainWindow.webContents.send('message', `writing new ${dataType}`);
   fse.writeFile(`${dropBoxPath}\\${dataType}.json`, `{ "${dataType}": ${JSON.stringify(value)}}`, err => {
     if (err) {
       if (mainWindow) {
         mainWindow.webContents.send('message', `${err.name}: ${err.message}`);
       }
+    } else {
+      mainWindow.webContents.send('message', 'loading OK');
     }
   });
 });
 
 ipcMain.on('updateLedger', e => {
   console.log(chalk.green('Main: received call to update ledger from window'), e.sender.currentIndex);
+  mainWindow.webContents.send('message', 'updating ledger');
   getData('customLedger')
     .then(results => {
       if (mainWindow) {
@@ -332,6 +350,7 @@ ipcMain.on('updateLedger', e => {
 
 ipcMain.on('open_account', (event, acctID, updateRef) => {
   console.log(chalk.green(`Main: received call to open window for ${acctID}`));
+  mainWindow.webContents.send('message', `opening window for account ${acctID}`);
   let alreadyOpen = false;
   // check to see if window already opened - if so just give it the focus
   if (openAccounts.has(`${acctID}`)) {
@@ -342,6 +361,7 @@ ipcMain.on('open_account', (event, acctID, updateRef) => {
   if (!alreadyOpen) {
     // else open new window
     openAccountWindow(updateRef, acctID);
+    mainWindow.webContents.send('message', 'loading OK');
   }
 });
 

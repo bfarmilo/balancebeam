@@ -8,6 +8,7 @@ import { formatCurrency } from '../actions/expandledger';
 // todo -- add single custom transaction to current ledger
 
 const ControlArea = (props: {
+  message: string,
   accountTable: Array<accountItem>,
   account: accountItem,
   selectAccount: (() => Event),
@@ -64,6 +65,7 @@ const ControlArea = (props: {
         <button type="button" className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount} onClick={props.changeCurr}>{props.viewCurr}</button>
         {props.account.accountType === 'liability' ? creditCard : ''}
       </div>
+      <div id="status" className={`${styles.message} ${props.message.includes('loading') ? styles.messagefade : ''}`}>{props.message}</div>
     </div>
   );
 };
