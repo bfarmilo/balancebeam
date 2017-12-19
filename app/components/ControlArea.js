@@ -22,6 +22,7 @@ const ControlArea = (props: {
   maxChars: number
 }) => {
   const waitTime = (props.message.includes('updating')) ? 10000 : 1000;
+  console.log('message %s, wait Time set to %d',props.message, waitTime);
   const remainingBal =
     (props.account.balance - props.account.paymentBal)
     + props.account.targetSpend;
@@ -43,9 +44,7 @@ const ControlArea = (props: {
     if (status) {
       status.style.opacity = 1;
       setTimeout(() => fade(status), waitTime);
-    } else {
-
-    }
+    } 
   }
   return (
     <div className="LedgerArea">
