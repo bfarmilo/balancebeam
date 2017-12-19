@@ -119,7 +119,6 @@ app.on('ready', async () => {
         }).filter(val => (val.dataType === 'accountList'))
       })
       .then(accountData => {
-        const todayDate = new Date();
         return checkAccount ? updateAccounts(mainWindow.webContents) : 'done';
       })
       .then(updated => {

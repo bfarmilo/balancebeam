@@ -21,6 +21,7 @@ const ControlArea = (props: {
   viewAccount: boolean,
   maxChars: number
 }) => {
+  const waitTime = (props.message.includes('updating')) ? 10000 : 1000;
   const remainingBal =
     (props.account.balance - props.account.paymentBal)
     + props.account.targetSpend;
@@ -41,7 +42,9 @@ const ControlArea = (props: {
     let status = document.querySelector('#status');
     if (status) {
       status.style.opacity = 1;
-      setTimeout(() => fade(status), 1000);
+      setTimeout(() => fade(status), waitTime);
+    } else {
+
     }
   }
   return (
