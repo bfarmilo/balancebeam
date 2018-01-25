@@ -14,6 +14,8 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import fse from 'fs-extra';
 import MenuBuilder from './menu';
 import chalk from 'chalk';
+import { encode, decode } from './actions/decrypt';
+//import './actions/updateall.js'; //so this file is in webpack
 
 import { getDropBoxPath } from './actions/getdropbox';
 
@@ -36,7 +38,7 @@ getDropBoxPath('personal')
     return fse.readJSON(`${dropBoxPath}\\config.json`)
   })
   .then(config => {
-    pathArray = config.config.updatePath;
+    pathArray = decode(config.payload).config.updatePath;
     if (mainWindow) {
       mainWindow.webContents.send('message', 'config file loaded');
     }
@@ -178,7 +180,7 @@ const updateAccounts = target => {
   updates.stdout.on('data', data => {
     console.log(chalk.green('updateAccounts: '), data);
     if (mainWindow) {
-      mainWindow.webContents.send('message', data);
+      mainWindow.webContents.send('message', 'updating balances...');
     }
   });
   updates.stderr.on('data', error => {
@@ -187,7 +189,7 @@ const updateAccounts = target => {
       mainWindow.webContents.send('message', 'Error updating accounts, please retry');
     }
   })
-  return promiseFromChildProcess(updates, 'accountList' )
+  return promiseFromChildProcess(updates, 'accountList')
     .then(account => getData(account))
     .then(results => {
       if (target) {
@@ -307,12 +309,12 @@ ipcMain.on('update', e => {
   if (mainWindow) {
     mainWindow.webContents.send('message', 'received update request')
     updateAccounts(mainWindow.webContents)
-    .then(updated => mainWindow.webContents.send('message', 'account updated'))
-    .catch(err => {
-      if (mainWindow) {
-        mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
-      }
-    })
+      .then(updated => mainWindow.webContents.send('message', 'account updated'))
+      .catch(err => {
+        if (mainWindow) {
+          mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
+        }
+      })
   };
 });
 ipcMain.on('writeOutput', (e, dataType, value) => {

@@ -482,7 +482,7 @@ class Main extends React.Component {
     const errorBlock = (
       <div>
         <span>{this.state.loadingMessage} </span>
-        <button type="button" onClick={() => ipcRenderer.send('update')}>Retry</button>
+        <button type="button" onClick={() => ipcRenderer.send('recover')}>Retry</button>
       </div>
     );
     const controlArea = (

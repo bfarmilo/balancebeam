@@ -1,6 +1,7 @@
 const fse = require('fs-extra');
 const { getAllUpdates } = require('./getbalances');
 const { getDropBoxPath } = require('./getdropbox');
+const { decode } = require('./decrypt');
 
 // call with updateall.js [test]
 
@@ -21,7 +22,7 @@ const updateAll = (next) => {
     return fse.readJSON(configFile);
   })
   .then(result => {
-    configPath = result.config.updatePath;
+    configPath = decode(result.payload).config.updatePath;
     return fse.readJSON(accountFile);
   })
   .then(acct => getAllUpdates(configPath, acct.accountList, testMode))
