@@ -19,10 +19,6 @@ import { encode, decode } from './actions/decrypt';
 
 import { getDropBoxPath } from './actions/getdropbox';
 
-const exec = require('child_process').exec;
-
-let checkAccount = true;
-
 let dropBoxPath = '';
 const openAccounts = new Map();
 let pathArray = [];
@@ -120,9 +116,6 @@ app.on('ready', async () => {
           return item;
         }).filter(val => (val.dataType === 'accountList'))
       })
-      .then(accountData => {
-        return checkAccount ? updateAccounts(mainWindow.webContents) : 'done';
-      })
       .then(updated => {
         mainWindow.webContents.send('message', 'loading OK');
         mainWindow.webContents.send('ready');
@@ -155,57 +148,7 @@ app.on('ready', async () => {
 
 // custom functions
 
-/** Promise wrapper for child_proess
- * 
- */
-function promiseFromChildProcess(child, next) {
-  return new Promise((resolve, reject) => {
-    child.addListener('error', (code, signal) => {
-      console.log('ChildProcess error', code, signal);
-      reject();
-    });
-    child.addListener('exit', (code, signal) => {
-      if (code === 0) {
-        resolve(next);
-      } else {
-        reject();
-      }
-    });
-  });
-}
 
-
-const updateAccounts = target => {
-  let updates = exec('node ./app/actions/updateall.js');
-  updates.stdout.on('data', data => {
-    console.log(chalk.green('updateAccounts: '), data);
-    if (mainWindow) {
-      mainWindow.webContents.send('message', 'updating balances...');
-    }
-  });
-  updates.stderr.on('data', error => {
-    console.error(chalk.red('updateAccounts: '), error);
-    if (mainWindow) {
-      mainWindow.webContents.send('message', 'Error updating accounts, please retry');
-    }
-  })
-  return promiseFromChildProcess(updates, 'accountList')
-    .then(account => getData(account))
-    .then(results => {
-      if (target) {
-        target.send(results.dataType, results.value);
-        target.send('message', `received updated ${results.dataType}`);
-      };
-      return Promise.resolve('done');
-    })
-    .catch(err => {
-      console.error(chalk.red(`${err}`));
-      if (mainWindow) {
-        mainWindow.webContents.send('message', `Error updating Accounts ${JSON.stringify(err)}`);
-      }
-      return Promise.reject(err);
-    });
-};
 
 const getData = (dataType) => new Promise((resolve, reject) => {
   // mainWindow.webContents.send('message', `Loading ${dataType} data`);
@@ -304,19 +247,7 @@ ipcMain.on('recover', e => {
   if (mainWindow) mainWindow.webContents.send('message', 'loading OK');
 });
 
-ipcMain.on('update', e => {
-  console.log(chalk.green('Main: received update request from window'), e.sender.currentIndex);
-  if (mainWindow) {
-    mainWindow.webContents.send('message', 'received update request')
-    updateAccounts(mainWindow.webContents)
-      .then(updated => mainWindow.webContents.send('message', 'account updated'))
-      .catch(err => {
-        if (mainWindow) {
-          mainWindow.webContents.send('message', `Error with getting initial data ${err}`);
-        }
-      })
-  };
-});
+
 ipcMain.on('writeOutput', (e, dataType, value) => {
   console.log(chalk.green(`Main: received call to update ${dataType} from window`), e.sender.currentIndex);
   mainWindow.webContents.send('message', `writing new ${dataType}`);

@@ -1,6 +1,6 @@
 const fse = require('fs-extra');
 const { getAllUpdates } = require('./getbalances');
-const { getDropBoxPath } = require('./getdropbox');
+const { getDropBoxPath } = require('../getdropbox');
 const { decode } = require('./decrypt');
 
 // call with updateall.js [test]
