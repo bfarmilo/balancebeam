@@ -27,6 +27,11 @@
       "type": "npm",
       "script": "getaccounts-test",
       "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "getBalances",
+      "problemMatcher": []
     }
   ]
 }
