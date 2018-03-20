@@ -14,9 +14,7 @@ const updateBalances = (accounts, updates) => {
       const todaysDate = new Date();
       return accounts.map(account => {
         const currentAccount = {...account};
-        const check = updates
-          .reduce((accum, current) => accum.concat(current))
-          .filter(item => account.acctID === item.acctID);
+        const check = updates.filter(item => account.acctID === item.acctID);
         if (check.length > 0) {
           console.log('\x1b[32m%s:\x1b[0m $ %d (%s)', currentAccount.accountName, check[0].balance, check[0].currency);
           const newBalance = check.reduce(value => value).balance;

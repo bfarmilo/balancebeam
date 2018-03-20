@@ -2,6 +2,7 @@ import React from 'react';
 import { recalculateBalance, convertCurrency, formatCurrency } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
 import { makeTickVals, createTargetChart } from '../actions/calcaxis';
+import { updateBalances } from '../actions/updateBalances';
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../components/ControlArea';
@@ -111,6 +112,12 @@ class Main extends React.Component {
         .find(acct => parseInt(acct.acctID, 10) === this.state.accountIdx);
       console.log('Home: resolved new account', account);
       this.setState({ accountTable, account });
+    });
+    ipcRenderer.on('new_balance_available', (e, data) => {
+      console.log('Home: received new account balance data', data);
+      this.setState({ accountTable: updateBalances(this.state.accountTable, data) }, () => {
+        ipcRenderer.send('writeOutput', 'accountList', this.state.accountTable);
+      });
     });
     ipcRenderer.on('budgetList', (e, budgetTable) => {
       console.log('Home: received new budgetList', budgetTable);
@@ -236,7 +243,7 @@ class Main extends React.Component {
     const editAcct = { ...this.state.editAcct };
     console.log('account change detected on', acctID, dataType);
     switch (dataType) {
-      case 'paymentBal': case 'targetSpend': case 'rate': case 'balance':
+      case 'paymentBal': case 'targetSpend': case 'balance':
         editAcct[dataType] = parseFloat(event.target.value);
         break;
       case 'paymentDate':
@@ -244,6 +251,9 @@ class Main extends React.Component {
         break;
       case 'includeAccount':
         editAcct[dataType] = !(event.target.value === 'true');
+        break;
+      case 'rate':
+        editAcct[dataType] = parseFloat(event.target.value) / 100;
         break;
       default:
         editAcct[dataType] = event.target.value;
@@ -465,6 +475,7 @@ class Main extends React.Component {
 
   openAccount() {
     if (Object.hasOwnProperty.call(this.state.account, 'updateRef')) {
+      ipcRenderer.send('get_balance', this.state.account.acctID);
       ipcRenderer.send('open_account', this.state.account.acctID, this.state.account.updateRef);
     }
   }
@@ -476,6 +487,9 @@ class Main extends React.Component {
       this.setState({ accountMode: false });
     }
   }
+
+  //TODO: method to update accounts
+  // calls ipcRenderer.send('get_balance', acctID)
 
   render() {
     let visibleBlocks;
