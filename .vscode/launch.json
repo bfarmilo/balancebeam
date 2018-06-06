@@ -4,6 +4,12 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Encrypt_Decrypt",
+      "program": "${workspaceFolder}/test/components/decrypt.test.js"
+    },
   {
     "type": "node",
     "request": "launch",
