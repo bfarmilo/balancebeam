@@ -3,7 +3,7 @@
 A cash flow planning app.
 
 ## Features
-* Two-currenct (USD CAD) tracking
+* Two-currency (USD CAD) tracking
 * Automatic balance updates and bank website integration
 * Cash flow planning for transfers, income and expenses
 * Link to USDCAD exchange rates
