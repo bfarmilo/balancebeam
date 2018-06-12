@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "app"
+		}
+	],
+	"settings": {
+		"javascript.validate.enable": false
+	}
+}

@@ -1,7 +1,7 @@
 {
   "name": "balancebeam",
   "productName": "BalanceBeam",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "A Desktop application for cash-flow management",
   "main": "./main.prod.js",
   "author": {

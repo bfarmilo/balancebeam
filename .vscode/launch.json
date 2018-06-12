@@ -10,12 +10,24 @@
       "name": "Encrypt_Decrypt",
       "program": "${workspaceFolder}/test/components/decrypt.test.js"
     },
-  {
-    "type": "node",
-    "request": "launch",
-    "name": "Update All",
-    "program": "${workspaceFolder}/app/actions/updateall.js"
-  },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Test_Scrape",
+      "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron.cmd"
+      },
+      "args": [
+        "${workspaceFolder}/test/components/scrape.test.js"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Update All",
+      "program": "${workspaceFolder}/app/actions/updateall.js"
+    },
     {
       "type": "node",
       "request": "launch",
