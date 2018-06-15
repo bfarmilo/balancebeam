@@ -47,10 +47,29 @@ const makeTickVals = (startRange, endRange, numTicks = 8) => (
   })
 );
 
+/**
+ * createBudget takes an account object, specifically a target spend, a last payment balance
+ * and a last payment date
+ * @param {accountList} account 
+ * @param {number} numMonths
+ * @returns {object} start: the starting date end: the ending date startBal: starting balance, burnRate the $/day spend to meet target
+ */
 const createBudget = (account, numMonths) => {
+  const burnRate = -(account.targetSpend * 12) / 365; //set the burn Rate
+  let startBal = account.paymentBal; //set the starting Balance
+  // calculate the date of the last payment, which becomes the start point
+  // note paymentDate is just the day of the month
   const currentDate = new Date();
-  const burnRate = -(account.targetSpend * 12) / 365;
-  let startBal = account.paymentBal;
+  const oldDate = new Date(
+    currentDate.getUTCFullYear(),
+    currentDate.getUTCDate() >= account.paymentDate
+    ? currentDate.getUTCMonth()
+    : currentDate.getUTCMonth() - 1,
+    account.paymentDate
+  );
+  oldDate.setUTCHours(0, 0, 0, 0);
+  // now calculate forward numMonths to the end point of the projection
+  // note if months > 12, the year automatically rolls over
   const paymentDate = new Date(
     currentDate.getUTCFullYear(),
     currentDate.getUTCDate() >= account.paymentDate
@@ -59,16 +78,10 @@ const createBudget = (account, numMonths) => {
     account.paymentDate
   );
   paymentDate.setUTCHours(0, 0, 0, 0);
-  const oldDate = new Date(paymentDate);
-  oldDate.setUTCMonth(
-    currentDate.getUTCDate() >= account.paymentDate
-      ? currentDate.getUTCMonth()
-      : currentDate.getUTCMonth() - 1
-  );
-
   if (currentDate === paymentDate) {
     startBal = account.balance;
   }
+  console.log('target data calculated: start %s end %s startBalance %d burnRate %d', oldDate, paymentDate, startBal, burnRate);
   return { start: oldDate, end: paymentDate, startBal, burnRate };
 };
 

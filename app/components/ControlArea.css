@@ -105,3 +105,10 @@
 .customdropdown::after {
   color: rgba(0,0,0,.4);
 }
+
+.message {
+  font-family: 'Consolas';
+  padding:0.5em;
+  opacity:1;
+  transition: all 1s ease-out;
+}

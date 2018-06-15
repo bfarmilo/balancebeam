@@ -2,6 +2,7 @@ import React from 'react';
 import { recalculateBalance, convertCurrency, formatCurrency } from '../actions/expandledger';
 import { accountBudget, updateMaster, modifyLedger } from '../actions/budgetops';
 import { makeTickVals, createTargetChart } from '../actions/calcaxis';
+import { updateBalances } from '../actions/updateBalances';
 import ChartArea from '../components/ChartArea';
 import BalanceTable from '../components/BalanceTable';
 import ControlArea from '../components/ControlArea';
@@ -74,7 +75,7 @@ class Main extends React.Component {
       editBud: blankBud,
       accountTable: [],
       accountIdx: 1,
-      account: {},
+      account: blankAcct,
       editAcct: blankAcct,
       customLedgerTable: [],
       data: [],
@@ -111,6 +112,12 @@ class Main extends React.Component {
         .find(acct => parseInt(acct.acctID, 10) === this.state.accountIdx);
       console.log('Home: resolved new account', account);
       this.setState({ accountTable, account });
+    });
+    ipcRenderer.on('new_balance_available', (e, data) => {
+      console.log('Home: received new account balance data', data);
+      this.setState({ accountTable: updateBalances(this.state.accountTable, data) }, () => {
+        ipcRenderer.send('writeOutput', 'accountList', this.state.accountTable);
+      });
     });
     ipcRenderer.on('budgetList', (e, budgetTable) => {
       console.log('Home: received new budgetList', budgetTable);
@@ -176,7 +183,6 @@ class Main extends React.Component {
                 displayCurrency: currency,
                 data,
                 tickValues,
-                loadingMessage: 'ready',
                 zeroPos: (maxBal > 0
                   ? maxBal / (maxBal - minBal)
                   : 0
@@ -237,7 +243,7 @@ class Main extends React.Component {
     const editAcct = { ...this.state.editAcct };
     console.log('account change detected on', acctID, dataType);
     switch (dataType) {
-      case 'paymentBal': case 'targetSpend': case 'rate': case 'balance':
+      case 'paymentBal': case 'targetSpend': case 'balance':
         editAcct[dataType] = parseFloat(event.target.value);
         break;
       case 'paymentDate':
@@ -245,6 +251,9 @@ class Main extends React.Component {
         break;
       case 'includeAccount':
         editAcct[dataType] = !(event.target.value === 'true');
+        break;
+      case 'rate':
+        editAcct[dataType] = parseFloat(event.target.value) / 100;
         break;
       default:
         editAcct[dataType] = event.target.value;
@@ -466,6 +475,7 @@ class Main extends React.Component {
 
   openAccount() {
     if (Object.hasOwnProperty.call(this.state.account, 'updateRef')) {
+      ipcRenderer.send('get_balance', this.state.account.acctID);
       ipcRenderer.send('open_account', this.state.account.acctID, this.state.account.updateRef);
     }
   }
@@ -478,16 +488,20 @@ class Main extends React.Component {
     }
   }
 
+  //TODO: method to update accounts
+  // calls ipcRenderer.send('get_balance', acctID)
+
   render() {
     let visibleBlocks;
     const errorBlock = (
       <div>
-        ${this.state.loadingMessage}
+        <span>{this.state.loadingMessage} </span>
         <button type="button" onClick={() => ipcRenderer.send('recover')}>Retry</button>
       </div>
     );
     const controlArea = (
       <ControlArea
+        message={this.state.loadingMessage}
         accountTable={this.state.accountTable}
         account={this.state.account}
         selectAccount={this.changeAccount}
@@ -537,7 +551,7 @@ class Main extends React.Component {
             target={Object.hasOwnProperty.call(this.state.account, 'paymentBal')
               ? createTargetChart(this.state.account)
               : ''}
-            showTarget={Object.hasOwnProperty.call(this.state.account, 'paymentBal')}
+            showTarget={false} //{Object.hasOwnProperty.call(this.state.account, 'paymentBal')} //NOT WORKING
           />
           <BalanceTable
             balance={this.state.displayBalance}
@@ -566,7 +580,7 @@ class Main extends React.Component {
     }
     return (
       <div>
-        {this.state.loadingMessage !== 'ready'
+        {(this.state.loadingMessage.includes('Error'))
           ? errorBlock
           : visibleBlocks}
       </div>

@@ -98,8 +98,8 @@ function modifyLedger(
               // move the date threshold forward by item.delay
               // to ensure both sides remain in the custom leger until
               // the delayed date passes, or today + 1 whichever is greater
-              includeDate.setUTCDate(includeDate.getUTCDate() + 1 + item.delay);
-              console.log('customTxn, include date: %s', includeDate);
+              includeDate.setUTCDate(includeDate.getUTCDate() + (item.delay ? item.delay : 1));
+              console.log('customTxn, include date: %s, today date: %s', includeDate, today);
               if (item.txnID === newEntry.txnID) {
                 result.push(newEntry);
               } else if (includeDate >= today) {
@@ -125,7 +125,6 @@ function modifyLedger(
         skipEntry.toAccount = 0;
         skipEntry.delay = 0;
         skipEntry.txnDate = today.toISOString().split('T')[0];
-        today.setDate(today.getDate() + 1);
         // first - look to replace an existing custom entry
         if (customLedger.find(item => item.txnID === skipEntry.txnID)) {
           updatedLedger = customLedger.reduce((result, item) => {

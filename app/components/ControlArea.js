@@ -8,6 +8,7 @@ import { formatCurrency } from '../actions/expandledger';
 // todo -- add single custom transaction to current ledger
 
 const ControlArea = (props: {
+  message: string,
   accountTable: Array<accountItem>,
   account: accountItem,
   selectAccount: (() => Event),
@@ -33,6 +34,16 @@ const ControlArea = (props: {
       </div>
     </div>
   );
+  const fade = (elem) => {
+    elem.style.opacity = 0;
+  }
+  const gofade = () => {
+    let status = document.querySelector('#status');
+    if (status) {
+      status.style.opacity = 1;
+      if (!props.message.includes('updating')) setTimeout(() => fade(status), 1000);
+    } 
+  }
   return (
     <div className="LedgerArea">
       <span className={styles.customdropdown}>
@@ -64,6 +75,7 @@ const ControlArea = (props: {
         <button type="button" className={styles.toggleButton} disabled={props.viewBudget || props.viewAccount} onClick={props.changeCurr}>{props.viewCurr}</button>
         {props.account.accountType === 'liability' ? creditCard : ''}
       </div>
+      <div id="status" className={styles.message} onLoad={gofade()}>{props.message}</div>
     </div>
   );
 };
