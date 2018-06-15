@@ -14,8 +14,8 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import fse from 'fs-extra';
 import MenuBuilder from './menu';
 import chalk from 'chalk';
-import { encode, decode } from './actions/decrypt';
-
+import crypto from 'crypto';
+import { encryptDecrypt } from './actions/decrypt';
 import { getDropBoxPath } from './actions/getdropbox';
 
 let dropBoxPath = '';
@@ -25,6 +25,9 @@ let pathArray = [];
 
 let mainWindow = null;
 
+const DECODE = false;
+const feed = crypto.createHash('SHA256').update(process.env.BALANCE).digest('hex');
+
 // on startup
 
 getDropBoxPath('personal')
@@ -33,8 +36,9 @@ getDropBoxPath('personal')
     console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
     return fse.readJSON(`${dropBoxPath}\\config.json`)
   })
-  .then(config => {
-    pathArray = decode(config.payload).config.updatePath;
+  .then(encrypted => encryptDecrypt(feed, encrypted, DECODE))
+  .then(decrypted => {
+    pathArray = decrypted.config.updatePath;
     if (mainWindow) {
       ipcSend('message', 'config file loaded');
     }
@@ -104,11 +108,11 @@ app.on('ready', async () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
-    console.log(process.env.DEVTOOLS);
+    // console.log(process.env.DEVTOOLS);
     if (process.env.DEVTOOLS === 'show') viewerWindow.webContents.openDevTools();
     mainWindow.show();
     mainWindow.focus();
-    getAllData(mainWindow.webContents)
+    getAllData()
       .then(result => {
         return result.map(item => {
           if (mainWindow) {
@@ -116,10 +120,20 @@ app.on('ready', async () => {
             ipcSend(item.dataType, item.value);
           };
           return item;
-        }).filter(val => (val.dataType === 'accountList'))
+        }).filter(val => (val.dataType === 'accountList'))[0];
       })
-      .then(updated => {
+      .then(accountData => {
         ipcSend('message', 'loading OK');
+        // load accountList into accountBalancePattern
+        accountBalancePattern = new Map(
+          accountData.value.filter(acct => acct.hasOwnProperty('updateRef')).map(account => {
+            const { match } = pathArray.filter(match => match.updateRef === account.updateRef)[0].updateSequence[0].N_PATTERN;
+            const updateRef = account.updateRef;
+            const { currency, quantity, selector, value, offset } = account.updateSequence[0].N_EVALUATE;
+            return [account.acctID, { updateRef, match, currency, quantity, selector, value, offset }];
+          })
+        );
+        console.log(chalk.green('Main: set accountBalancePattern', JSON.stringify(accountBalancePattern)));
         ipcSend('ready');
       })
       .catch(err => {
@@ -150,6 +164,30 @@ app.on('ready', async () => {
 
 // custom functions
 
+/** getAllData loads local data files into local objects
+ * @returns {Array<Promise>} resolves to {dataType, value}
+ */
+const getAllData = () => {
+
+  ipcSend('message', 'Loading local data files...');
+
+  const getData = dataType => new Promise((resolve, reject) => {
+    console.log(chalk.green(`Main: Loading ${dropBoxPath}\\${dataType}.json`));
+    fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
+      .then(resultData => {
+        console.log(chalk.green(`Main: Good ${dataType} data`));
+        return resolve({ dataType, value: resultData[dataType] });
+      })
+      .catch(err1 => {
+        console.error(chalk.red(`Error getting ${dataType} data: ${err1}`));
+        return reject(err1);
+      });
+  });
+  return Promise.all(['budgetList', 'customLedger', 'accountList'].map(getData));
+};
+
+
+
 /** A helper function to make testing easier
  * 
  * @param {string} channel 
@@ -161,6 +199,10 @@ const ipcSend = (channel, payload) => {
 
 
 // in retry mode, don't redefine the function just call it
+// accesses globals accountBalancePattern, openAccounts, {BrowserWindow}
+// TODO pass these in as locals
+// TODO ie, might need a function here in main for executing javascript
+
 const getBalances = async acctID => {
 
   const allPatterns = new Map([...accountBalancePattern].filter(([k, v]) => v.updateRef === accountBalancePattern.get(acctID).updateRef));
@@ -179,120 +221,97 @@ const getBalances = async acctID => {
       console.warn(window.getData());
       window.getData();`
   try {
-      const result = await openAccounts.get(`${acctID}`).webContents.executeJavaScript(getBalance, false);
-      const updatedRecord = result.map(([accountID, accountData]) => {
-          // first create the dollars, cents, and [currency] regex from the accountPattern map
-          const matchVal = new RegExp(allPatterns.get(accountID).match, 'g');
-          const { quantity, currency } = allPatterns.get(accountID);
-          // replace using the regex (from config.json) and the replace pattern (from accountList.json)
-          // to convert into a signed Float (strip off commas and dollar signs)
-          console.log(accountID, accountData, matchVal);
-          const matchResult = accountData.match(matchVal)[0];
-          return {
-              acctID: accountID,
-              balance: parseFloat(matchResult.replace(matchVal, quantity).replace('(', '-')),
-              currency: matchResult.replace(matchVal, currency)
-          }
-      });
-      console.log('Main: received new balance data from account window', updatedRecord);
-      return updatedRecord;
+    const result = await openAccounts.get(`${acctID}`).webContents.executeJavaScript(getBalance, false);
+    const updatedRecord = result.map(([accountID, accountData]) => {
+      // first create the dollars, cents, and [currency] regex from the accountPattern map
+      const matchVal = new RegExp(allPatterns.get(accountID).match, 'g');
+      const { quantity, currency } = allPatterns.get(accountID);
+      // replace using the regex (from config.json) and the replace pattern (from accountList.json)
+      // to convert into a signed Float (strip off commas and dollar signs)
+      console.log(accountID, accountData, matchVal);
+      const matchResult = accountData.match(matchVal)[0];
+      return {
+        acctID: accountID,
+        balance: parseFloat(matchResult.replace(matchVal, quantity).replace('(', '-')),
+        currency: matchResult.replace(matchVal, currency)
+      }
+    });
+    console.log('Main: received new balance data from account window', updatedRecord);
+    return updatedRecord;
   } catch (err) {
-      console.error(err);
-      return 'error: problem getting balances';
+    console.error(err);
+    return 'error: problem getting balances';
   }
 };
 
-const getData = (dataType) => new Promise((resolve, reject) => {
-  // mainWindow.webContents.send('message', `Loading ${dataType} data`);
-  console.log(chalk.green(`Main: Loading ${dropBoxPath}\\${dataType}.json`));
-  fse.readJSON(`${dropBoxPath}\\${dataType}.json`)
-    .then(resultData => {
-      console.log(chalk.green(`Main: Good ${dataType} data`));
-      // load accountList into accountBalancePattern
-      if (dataType === 'accountList') {
-        accountBalancePattern = new Map([].concat(
-          resultData.accountList.filter(acct => acct.hasOwnProperty('updateRef')).map(account => {
-            const { match } = pathArray.filter(match => match.updateRef === account.updateRef)[0].updateSequence[0].N_PATTERN;
-            const updateRef = account.updateRef;
-            const { currency, quantity, selector, value, offset } = account.updateSequence[0].N_EVALUATE;
-            return [account.acctID, { updateRef, match, currency, quantity, selector, value, offset }];
-          })
-        ));
-        console.log(chalk.green('Main: set accountBalancePattern', JSON.stringify(accountBalancePattern)));
-      }
-      return resolve({ dataType, value: resultData[dataType] });
-    })
-    .catch(err1 => {
-      console.error(chalk.red(`Error getting ${dataType} data: ${err1}`));
-      return reject(err1);
-    });
-});
-
-const getAllData = (target) => {
-  target.webContents.send('message', 'Loading local data files...');
-  return Promise.all(['budgetList', 'customLedger', 'accountList'].map(getData));
-};
-
+/** open the account window and try the login & scrape sequence
+ * uses globals {BrowserWindow}, openAccounts
+ * calls getBalances, ipcSend
+ * 
+ * @param {*} updateRef 
+ * @param {*} acctID 
+ * @param {*} alreadyOpen 
+ * @param {*} openWindow 
+ */
 const openAccountWindow = (updateRef, acctID, alreadyOpen = false, openWindow = {}) => {
 
   // takes a file argument and opens a window
   // also stops the title from changing
   const viewerWindow = alreadyOpen ? openWindow : new BrowserWindow({
-      width: 1024,
-      height: 800,
-      x: 50,
-      y: 50,
-      autoHideMenuBar: true,
-      webPreferences: {
-          webSecurity: false,
-          nodeIntegration: false
-      }
+    width: 1024,
+    height: 800,
+    x: 50,
+    y: 50,
+    autoHideMenuBar: true,
+    webPreferences: {
+      webSecurity: false,
+      nodeIntegration: false
+    }
   });
 
   const waitForPage = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   const doSomethingOnPage = async entry => {
-
-      try {
-          const targetWindow = viewerWindow.webContents;
-          if (entry.command === 'type') {
-              const alreadyTyped = await targetWindow.executeJavaScript(`
+    try {
+      const targetWindow = viewerWindow.webContents;
+      if (entry.command === 'type') {
+        const alreadyTyped = await targetWindow.executeJavaScript(`
           document.querySelector('${entry.target}').focus();
           console.log('activating focus on', document.querySelector('${entry.target}'));
           (()=>document.querySelector('${entry.target}').value!=='')();
       `, false);
-              if (!alreadyTyped) entry.value.split('').map(key => targetWindow.sendInputEvent({ type: 'char', keyCode: key }));
-              await waitForPage(500);
-          }
-          if (entry.command === 'set') {
-              await targetWindow.executeJavaScript(`
-              document.querySelector('${entry.target}').value = '${entry.value}';
-              //sconsole.log(document.querySelector('${entry.target}').value);`
-              );
-          }
-          if (entry.command === 'click') {
-              await targetWindow.executeJavaScript(`document.querySelector('${entry.target}').click();`, false);
-              await waitForPage(1000);
-          }
-          return Promise.resolve(entry.command);
-      } catch (err) {
-          return Promise.reject(err);
+        if (!alreadyTyped) entry.value.split('').map(key => targetWindow.sendInputEvent({ type: 'char', keyCode: key }));
+        await waitForPage(500);
       }
+      if (entry.command === 'set') {
+        await targetWindow.executeJavaScript(`
+              document.querySelector('${entry.target}').value = '${entry.value}';
+              // console.log(document.querySelector('${entry.target}').value);`
+        );
+      }
+      if (entry.command === 'click') {
+        await targetWindow.executeJavaScript(`document.querySelector('${entry.target}').click();`, false);
+        await waitForPage(1000);
+      }
+      return Promise.resolve(entry.command);
+    } catch (err) {
+      return Promise.reject(err);
+    }
   }
 
   const runCommands = () => commandSequence.map(command => () => doSomethingOnPage(command)).reduce((promise, func) =>
-      promise.then(result => func().then(Array.prototype.concat.bind(result))),
-      Promise.resolve([]))
-      .then(result => waitForPage(5000))
-      .then(() => {
-          console.log('finished loading redirect page, calling page scrape');
-          return getBalances(`${acctID}`);
-      })
-      .then(message => ipcSend(typeof(message) === 'string' ? 'message' : 'new_balance_available', message))
-      .catch(console.error.bind(console));
+    promise.then(result => func().then(Array.prototype.concat.bind(result))),
+    Promise.resolve([]))
+    .then(result => waitForPage(5000))
+    .then(() => {
+      console.log('finished loading redirect page, calling page scrape');
+      return getBalances(`${acctID}`);
+    })
+    .then(message => ipcSend(typeof (message) === 'string' ? 'message' : 'new_balance_available', message))
+    .catch(console.error.bind(console));
 
   const entry = pathArray
-      .filter(val => val.updateRef === updateRef).reduce(val => val).updateSequence;
+    .filter(val => val.updateRef === updateRef).reduce(val => val).updateSequence;
 
   // pull off the commands
   const url = entry.find(elem => elem.command === 'goto').target;
@@ -301,30 +320,30 @@ const openAccountWindow = (updateRef, acctID, alreadyOpen = false, openWindow = 
 
   // window not open - set up the listeners and load it.
   if (!alreadyOpen) {
-      // When the account is closed, delete it from the map of open accounts
-      viewerWindow.on('closed', () => {
-          console.log(`Main: window closed: ${acctID}`);
-          openAccounts.delete(`${acctID}`);
-      });
+    // When the account is closed, delete it from the map of open accounts
+    viewerWindow.on('closed', () => {
+      console.log(`Main: window closed: ${acctID}`);
+      openAccounts.delete(`${acctID}`);
+    });
 
-      viewerWindow.webContents.once('did-stop-loading', e => {
-          // every time there's a did-stop-loading event this will fire, many times
-          // since there's lots of redirects
-          waitForPage(1000);
-          console.log(`finished Loading, executing startup commands`);
-          runCommands();
-      })
-
-      // now open the window
-      viewerWindow.loadURL(`${url}`);
-      //viewerWindow.loadURL(`file://${__dirname}/accountView.html`)
-      //viewerWindow.webContents.send('load_account', url);   
-      viewerWindow.webContents.openDevTools();
-      openAccounts.set(`${acctID}`, viewerWindow);
-  } else {
-      // window is already open, user clicked on the button again
-      console.log(`retrying startup commands`);
+    viewerWindow.webContents.once('did-stop-loading', e => {
+      // every time there's a did-stop-loading event this will fire, many times
+      // since there's lots of redirects
+      waitForPage(1000);
+      console.log(`finished Loading, executing startup commands`);
       runCommands();
+    })
+
+    // now open the window
+    viewerWindow.loadURL(`${url}`);
+    //viewerWindow.loadURL(`file://${__dirname}/accountView.html`)
+    //viewerWindow.webContents.send('load_account', url);   
+    viewerWindow.webContents.openDevTools();
+    openAccounts.set(`${acctID}`, viewerWindow);
+  } else {
+    // window is already open, user clicked on the button again
+    console.log(`retrying startup commands`);
+    runCommands();
   }
 };
 
@@ -433,9 +452,9 @@ ipcMain.on('get_exchange', (event) => {
 ipcMain.on('get_balance', (e, acctID) => {
   if (openAccounts.has(`${acctID}`)) {
     getBalances(`${acctID}`).then(message => {
-      ipcSend(typeof(message) === 'string' ? 'message' : 'new_balance_available', message);
+      ipcSend(typeof (message) === 'string' ? 'message' : 'new_balance_available', message);
     })
-    .catch(err => console.error(err));
+      .catch(err => console.error(err));
   } else {
     console.log('Main: unable to retrieve balance until window is open');
   }
