@@ -34,7 +34,7 @@ getDropBoxPath('personal')
   .then(dropbox => {
     dropBoxPath = `${dropbox}\\Swap\\Budget`;
     console.log(chalk.green(`Main: Good DropBox Path:${dropBoxPath}`));
-    return fse.readJSON(`${dropBoxPath}\\config.json`)
+    return fse.readJSON(`${dropBoxPath}\\config.json`);
   })
   .then(encrypted => encryptDecrypt(feed, encrypted, DECODE))
   .then(decrypted => {
@@ -338,7 +338,7 @@ const openAccountWindow = (updateRef, acctID, alreadyOpen = false, openWindow = 
     viewerWindow.loadURL(`${url}`);
     //viewerWindow.loadURL(`file://${__dirname}/accountView.html`)
     //viewerWindow.webContents.send('load_account', url);   
-    viewerWindow.webContents.openDevTools();
+    if (process.env.DEVTOOLS === 'show') viewerWindow.webContents.openDevTools();
     openAccounts.set(`${acctID}`, viewerWindow);
   } else {
     // window is already open, user clicked on the button again
