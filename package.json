@@ -31,7 +31,7 @@
     "test-e2e": "cross-env NODE_ENV=test BABEL_DISABLE_CACHE=1 node --trace-warnings ./test/runTests.js e2e",
     "test-watch": "npm test -- --watch"
   },
-  "browserslist": "electron 1.7",
+  "browserslist": "electron 2.0",
   "build": {
     "productName": "BalanceBeam",
     "appId": "org.develar.ElectronReact",

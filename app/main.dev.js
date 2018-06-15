@@ -108,8 +108,7 @@ app.on('ready', async () => {
     if (!mainWindow) {
       throw new Error('"mainWindow" is not defined');
     }
-    // console.log(process.env.DEVTOOLS);
-    if (process.env.DEVTOOLS === 'show') viewerWindow.webContents.openDevTools();
+    if (process.env.NODE_ENV === 'development') mainWindow.webContents.openDevTools();
     mainWindow.show();
     mainWindow.focus();
     getAllData()
@@ -338,7 +337,7 @@ const openAccountWindow = (updateRef, acctID, alreadyOpen = false, openWindow = 
     viewerWindow.loadURL(`${url}`);
     //viewerWindow.loadURL(`file://${__dirname}/accountView.html`)
     //viewerWindow.webContents.send('load_account', url);   
-    if (process.env.DEVTOOLS === 'show') viewerWindow.webContents.openDevTools();
+    if (process.env.NODE_ENV === 'development') viewerWindow.webContents.openDevTools();
     openAccounts.set(`${acctID}`, viewerWindow);
   } else {
     // window is already open, user clicked on the button again
