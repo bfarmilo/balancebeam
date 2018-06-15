@@ -1,7 +1,7 @@
 {
   "name": "balancebeam",
   "productName": "BalanceBeam",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "A Desktop application for cash-flow management",
   "main": "./main.prod.js",
   "author": {
@@ -10,7 +10,7 @@
     "url": "https://github.com/bfarmilo"
   },
   "scripts": {
-    "postinstall": "npm rebuild --runtime=electron --target=1.7.9 --disturl=https://atom.io/download/atom-shell --build-from-source"
+    "postinstall": "npm rebuild --runtime=electron --target=2.0.2 --disturl=https://atom.io/download/atom-shell --build-from-source"
   },
   "license": "MIT",
   "dependencies": {},
